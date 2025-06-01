@@ -40,10 +40,6 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
 
-    // Thiết lập giá trị mặc định để test
-    emailController.text = "11@gmail.com";
-    passwordController.text = "NewPass12345!";
-
     // Thêm listener cho FocusNode
     emailFocusNode.addListener(() {
       if (!emailFocusNode.hasFocus) {
