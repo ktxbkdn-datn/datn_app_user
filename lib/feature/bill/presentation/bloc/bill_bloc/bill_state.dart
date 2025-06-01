@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entity/bill_entities.dart';
+import '../../../domain/entity/bill_entities.dart';
 
 /// Thông tin phân trang cho danh sách hóa đơn hoặc chi tiết hóa đơn.
 class PaginationInfo extends Equatable {

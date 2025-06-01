@@ -201,7 +201,7 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(5.0),
                     child: Row(
                       children: [
                         IconButton(
@@ -210,7 +210,7 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
                         ),
                         Expanded(
                           child: Text(
-                            "Notification Details",
+                            "Chi tiết thông báo",
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,

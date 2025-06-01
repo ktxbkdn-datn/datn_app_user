@@ -107,17 +107,17 @@ class _KBottomAppBarState extends State<KBottomAppBar> {
           final _navBarItems = [
             SalomonBottomBarItem(
               icon: const Icon(Ionicons.home_outline),
-              title: const Text("Home"),
+              title: const Text("Trang chủ"),
               selectedColor: Colors.deepPurple[400],
             ),
             SalomonBottomBarItem(
               icon: const Icon(Ionicons.open),
-              title: const Text("Report"),
+              title: const Text("Báo cáo"),
               selectedColor: Colors.pinkAccent[400],
             ),
             SalomonBottomBarItem(
               icon: const Icon(Ionicons.cash_outline),
-              title: const Text("Bill"),
+              title: const Text("Hoá đơn"),
               selectedColor: Colors.orangeAccent[400],
             ),
             SalomonBottomBarItem(
@@ -151,12 +151,12 @@ class _KBottomAppBarState extends State<KBottomAppBar> {
                     ),
                 ],
               ),
-              title: const Text("Notification"),
+              title: const Text("Thông báo"),
               selectedColor: Colors.blueAccent[400],
             ),
             SalomonBottomBarItem(
               icon: const Icon(Ionicons.settings),
-              title: const Text("Setting"),
+              title: const Text("cài đặt"),
               selectedColor: Colors.tealAccent[400],
             ),
           ];

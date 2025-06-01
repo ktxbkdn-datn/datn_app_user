@@ -182,7 +182,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Report",
+                          "Báo cáo của tôi",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -193,7 +193,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.refresh, color: Colors.white, size: 36),
+                              icon: const Icon(Icons.refresh, color: Colors.white, size: 30),
                               onPressed: () async {
                                 setState(() {
                                   _isInitialLoad = true;
@@ -203,7 +203,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.add, color: Colors.white, size: 36),
+                              icon: const Icon(Icons.add, color: Colors.white, size: 30),
                               onPressed: () async {
                                 final result = await Navigator.push(
                                   context,
@@ -226,7 +226,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0),
                     child: TextField(
                       onChanged: (value) {
                         setState(() {
@@ -247,7 +247,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: SingleChildScrollView(
@@ -352,7 +352,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                           children: [
                             Expanded(
                               child: ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
                                 itemCount: paginatedReports.length,
                                 itemBuilder: (context, index) {
                                   final report = paginatedReports[index];
@@ -361,7 +361,7 @@ class _ReportScreenState extends State<ReportScreen> with AutomaticKeepAliveClie
                                       _showReportDetailBottomSheet(report, reportTypes);
                                     },
                                     child: Container(
-                                      margin: const EdgeInsets.only(bottom: 16.0),
+                                      margin: const EdgeInsets.only(bottom: 10.0),
                                       padding: const EdgeInsets.all(16.0),
                                       decoration: BoxDecoration(
                                         color: Colors.white,

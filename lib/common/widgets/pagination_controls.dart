@@ -25,7 +25,7 @@ class PaginationControls extends StatelessWidget {
               ? () => onPageChanged!(currentPage - 1) // Chỉ gọi nếu onPageChanged không null
               : null,
         ),
-        Text('Page $currentPage'),
+        Text('Trang $currentPage'),
         IconButton(
           icon: const Icon(Icons.arrow_forward),
           onPressed: (totalItems > currentPage * limit && onPageChanged != null)

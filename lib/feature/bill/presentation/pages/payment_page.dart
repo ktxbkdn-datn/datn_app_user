@@ -7,12 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import '../../../../common/constant/api_constant.dart';
-import '../../../../feature/bill/presentation/bill_bloc/bill_bloc.dart';
-import '../../../../feature/bill/presentation/bill_bloc/bill_event.dart';
-import '../../../../feature/bill/presentation/bill_bloc/bill_state.dart';
-import '../../../../feature/bill/presentation/payment_bloc/payment_bloc.dart';
-import '../../../../feature/bill/presentation/payment_bloc/payment_event.dart';
-import '../../../../feature/bill/presentation/payment_bloc/payment_state.dart';
+import '../bloc/bill_bloc/bill_bloc.dart';
+import '../bloc/bill_bloc/bill_event.dart';
+import '../bloc/bill_bloc/bill_state.dart';
+import '../bloc/payment_bloc/payment_bloc.dart';
+import '../bloc/payment_bloc/payment_event.dart';
+import '../bloc/payment_bloc/payment_state.dart';
 import '../../../service/presentation/bloc/service_bloc.dart';
 import '../../../service/presentation/bloc/service_event.dart';
 import '../../../service/presentation/bloc/service_state.dart';
@@ -472,10 +472,10 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                 services = state.services.map((service) {
                                   Color color;
                                   switch (service.name.toLowerCase()) {
-                                    case 'electricity':
+                                    case 'Điện':
                                       color = Colors.blue;
                                       break;
-                                    case 'water':
+                                    case 'Nước':
                                       color = Colors.orange;
                                       break;
                                     default:
@@ -531,7 +531,7 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                 }
                               } else if (_currentTransactionId == transaction.transactionId) {
                                 if (transaction.status == 'SUCCESS') {
-                                  print('Payment success');
+                                  print('Payment successful');
                                   _stopPolling();
                                   ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -654,7 +654,7 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Payment',
+                                    'Trang thanh toán',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: kIsWeb ? 18 : 20,
@@ -669,7 +669,7 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Services offering',
+                                    'Nhập báo cáo chỉ số',
                                     style: TextStyle(
                                       fontSize: kIsWeb ? 16 : 18,
                                       fontWeight: FontWeight.bold,
@@ -679,7 +679,7 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                   ),
                                   TextButton(
                                     child: Text(
-                                      'History',
+                                      'Lịch sử giao dịch',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: kIsWeb ? 14 : 16,

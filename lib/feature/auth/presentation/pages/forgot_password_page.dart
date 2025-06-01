@@ -57,18 +57,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           listener: (context, state) {
             if (state is AuthError) {
               Get.snackbar(
-                'Error',
+                'Lỗi',
                 state.message,
-                snackPosition: SnackPosition.BOTTOM,
+                snackPosition: SnackPosition.TOP,
                 backgroundColor: Colors.red,
                 colorText: Colors.white,
               );
             }
             if (state is ForgotPasswordSent) {
               Get.snackbar(
-                'Success',
+                'Thành công',
                 'Mã xác nhận đã được gửi qua email: ${state.userType}',
-                snackPosition: SnackPosition.BOTTOM,
+                snackPosition: SnackPosition.TOP,
                 backgroundColor: Colors.green,
                 colorText: Colors.white,
               );
@@ -99,14 +99,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 const Column(
                                   children: <Widget>[
                                     Text(
-                                      "Forgot Password",
+                                      "Quên mật khẩu",
                                       style: TextStyle(
                                         fontSize: 30,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     Text(
-                                      "Enter your email to receive a verification code",
+                                      "Nhập email của bạn để nhận mã xác nhận",
                                       style: TextStyle(
                                         fontSize: 15,
                                         color: Colors.grey,
@@ -147,7 +147,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                       );
                                     },
                                     buttonColor: Colors.lightGreenAccent,
-                                    nameButton: 'Send Code',
+                                    nameButton: 'Gửi mã xác nhận',
                                     textColor: Colors.black,
                                     borderSideColor: Colors.white,
                                   ),

@@ -72,18 +72,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           listener: (context, state) {
             if (state is AuthError) {
               Get.snackbar(
-                'Error',
+                'Lỗi',
                 state.message,
-                snackPosition: SnackPosition.BOTTOM,
+                snackPosition: SnackPosition.TOP,
                 backgroundColor: Colors.red,
                 colorText: Colors.white,
               );
             }
             if (state is PasswordResetSuccess) {
               Get.snackbar(
-                'Success',
+                'Thành công',
                 'Đặt lại mật khẩu thành công',
-                snackPosition: SnackPosition.BOTTOM,
+                snackPosition: SnackPosition.TOP,
                 backgroundColor: Colors.green,
                 colorText: Colors.white,
               );
@@ -114,14 +114,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                 const Column(
                                   children: <Widget>[
                                     Text(
-                                      "Reset Password",
+                                      "Đặt lại mật khẩu",
                                       style: TextStyle(
                                         fontSize: 30,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     Text(
-                                      "Enter your email, code, and new password",
+                                      "Nhập email của bạn để nhận mã xác nhận",
                                       style: TextStyle(
                                         fontSize: 15,
                                         color: Colors.grey,
@@ -137,11 +137,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                       controller: emailController,
                                     ),
                                     InputField(
-                                      label: "Verification Code",
+                                      label: "Mã xác nhận",
                                       controller: codeController,
                                     ),
                                     InputField(
-                                      label: "New Password",
+                                      label: "Mật khẩu mới",
                                       controller: newPasswordController,
                                       obscureText: _isObscure,
                                       suffixIcon: IconButton(
@@ -186,7 +186,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                       );
                                     },
                                     buttonColor: Colors.lightGreenAccent,
-                                    nameButton: 'Reset Password',
+                                    nameButton: 'Đặt lại mật khẩu',
                                     textColor: Colors.black,
                                     borderSideColor: Colors.white,
                                   ),

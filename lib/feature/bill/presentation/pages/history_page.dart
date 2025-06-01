@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart'; // Thêm package intl để định dạng ngày
-import '../../../../feature/bill/presentation/bill_bloc/bill_bloc.dart';
-import '../../../../feature/bill/presentation/bill_bloc/bill_event.dart';
-import '../../../../feature/bill/presentation/bill_bloc/bill_state.dart';
+import '../bloc/bill_bloc/bill_bloc.dart';
+import '../bloc/bill_bloc/bill_event.dart';
+import '../bloc/bill_bloc/bill_state.dart';
 import '../../domain/entity/bill_entities.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -97,7 +97,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Payment History',
+                            'Lịch sử thanh toán',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: kIsWeb ? 18 : 20,

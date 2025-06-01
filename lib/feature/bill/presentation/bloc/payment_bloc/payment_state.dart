@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entity/payment_transaction_entity.dart';
+import '../../../domain/entity/payment_transaction_entity.dart';
 
 abstract class PaymentTransactionState extends Equatable {
   const PaymentTransactionState();

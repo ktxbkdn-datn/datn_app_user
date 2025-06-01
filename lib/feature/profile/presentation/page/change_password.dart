@@ -273,7 +273,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           Get.snackbar(
             'Error',
             state.message,
-            snackPosition: SnackPosition.BOTTOM,
+            snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red,
             colorText: Colors.white,
             duration: const Duration(seconds: 3),

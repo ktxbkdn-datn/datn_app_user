@@ -147,7 +147,7 @@ class _RoomRegistrationViewState extends State<RoomRegistrationView> {
                           Get.snackbar(
                             'Lỗi',
                             state.error,
-                            snackPosition: SnackPosition.BOTTOM,
+                            snackPosition: SnackPosition.TOP,
                             backgroundColor: Colors.red,
                             colorText: Colors.white,
                             duration: const Duration(seconds: 3),
@@ -275,34 +275,8 @@ class _RoomRegistrationViewState extends State<RoomRegistrationView> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        if (_numberOfPeople > 1) _numberOfPeople--;
-                                        int availableSlots = widget.room.capacity - widget.room.currentPersonNumber;
-                                        if (_numberOfPeople > availableSlots) {
-                                          _numberOfPeopleError = 'Chỉ còn $availableSlots chỗ khả dụng';
-                                        } else {
-                                          _numberOfPeopleError = null;
-                                        }
-                                      });
-                                    },
-                                    icon: const Icon(Icons.remove, color: AppColors.textPrimary),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _numberOfPeople++;
-                                        int availableSlots = widget.room.capacity - widget.room.currentPersonNumber;
-                                        if (_numberOfPeople > availableSlots) {
-                                          _numberOfPeopleError = 'Chỉ còn $availableSlots chỗ khả dụng';
-                                        } else {
-                                          _numberOfPeopleError = null;
-                                        }
-                                      });
-                                    },
-                                    icon: const Icon(Icons.add, color: AppColors.textPrimary),
-                                  ),
+                                
+                          
                                 ],
                               ),
                               const SizedBox(height: 16),

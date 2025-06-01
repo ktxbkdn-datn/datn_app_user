@@ -40,15 +40,23 @@ class WelcomePage extends StatelessWidget {
               const Column(
                 children: <Widget>[
                   Text(
-                    "Welcome",
+                    "Chào mừng bạn đến với",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 30,
+                      fontSize: 20,
                     ),
                   ),
-                  SizedBox(height: 30),
+                  SizedBox(height: 10),
                   Text(
-                    "Choose your state to continue",
+                    "Ký túc xá Bách Khoa",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    "Chọn một trong hai lựa chọn bên dưới để tiếp tục",
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 15,
@@ -71,7 +79,7 @@ class WelcomePage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: const Text(
-                      "Already have an account",
+                      "Đã có tài khoản",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -80,13 +88,13 @@ class WelcomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   Padding(
-                    padding: const EdgeInsets.only(top: 3, left: 3),
+                    padding: const EdgeInsets.only(top: 3, left: 3,),
                     child: KtxButton(
                       onTap: () {
                         Get.to(() => const ViewRoom(showBackButton: true)); // Pass showBackButton: true
                       },
                       buttonColor: Colors.yellowAccent.shade100,
-                      nameButton: 'Without Account',
+                      nameButton: 'Chưa có tài khoản',
                       textColor: Colors.black,
                       borderSideColor: Colors.black,
                     ),

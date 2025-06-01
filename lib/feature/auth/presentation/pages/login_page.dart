@@ -210,14 +210,14 @@ class _LoginPageState extends State<LoginPage> {
                                 const Column(
                                   children: <Widget>[
                                     Text(
-                                      "Login",
+                                      "Đăng nhập",
                                       style: TextStyle(
                                         fontSize: 30,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     Text(
-                                      "Login to your account",
+                                      "Đăng nhập vào tài khoản được cấp của bạn",
                                       style: TextStyle(
                                         fontSize: 15,
                                         color: Colors.grey,
@@ -242,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
                                         InputField(
-                                          label: "Password",
+                                          label: "Mật khẩu",
                                           controller: passwordController,
                                           focusNode: passwordFocusNode,
                                           obscureText: _isObscure,
@@ -275,7 +275,7 @@ class _LoginPageState extends State<LoginPage> {
                                                           .pushNamed('/forgot_password');
                                                     },
                                               child: const Text(
-                                                'Forgot Password?',
+                                                'Quên mật khẩu ?',
                                                 style: TextStyle(
                                                   color: Colors.blueAccent,
                                                   fontSize: 14,
@@ -313,7 +313,7 @@ class _LoginPageState extends State<LoginPage> {
                                                 );
                                           },
                                     buttonColor: Colors.lightGreenAccent,
-                                    nameButton: 'Login',
+                                    nameButton: 'Đăng nhập',
                                     textColor: Colors.black,
                                     borderSideColor: Colors.white,
                                   ),

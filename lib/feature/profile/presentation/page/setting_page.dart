@@ -76,7 +76,7 @@ class _SettingPageState extends State<SettingPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Settings",
+                          "Cài đặt",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -86,7 +86,7 @@ class _SettingPageState extends State<SettingPage> {
                         ),
                         const SizedBox(height: 30),
                         Text(
-                          "Account",
+                          "Tài khoản",
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w500,
@@ -158,7 +158,7 @@ class _SettingPageState extends State<SettingPage> {
                         ),
                         const SizedBox(height: 30),
                         Text(
-                          "Settings",
+                          "Cài đặt",
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w500,
@@ -168,7 +168,7 @@ class _SettingPageState extends State<SettingPage> {
                         ),
                         const SizedBox(height: 20),
                         _buildSettingItem(
-                          title: 'Change Password',
+                          title: 'Đổi mật khẩu',
                           iconColor: AppColors.buttonPrimary,
                           icon: Ionicons.lock_closed,
                           onTap: () {
@@ -177,7 +177,7 @@ class _SettingPageState extends State<SettingPage> {
                         ),
                         const SizedBox(height: 20),
                         _buildSettingItem(
-                          title: 'View Contracts',
+                          title: 'Xem hợp đồng',
                           iconColor: Colors.teal,
                           icon: Ionicons.document_text,
                           onTap: () {
@@ -193,7 +193,7 @@ class _SettingPageState extends State<SettingPage> {
                         // ),
                         const SizedBox(height: 20),
                         _buildSettingItem(
-                          title: 'Logout',
+                          title: 'Đăng xuất',
                           iconColor: AppColors.textPrimary,
                           icon: Ionicons.log_out,
                           onTap: () {

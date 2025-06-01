@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../src/core/error/failures.dart';
-import '../../domain/repository/bill_repository.dart';
+import '../../../../../src/core/error/failures.dart';
+import '../../../domain/repository/bill_repository.dart';
 import 'bill_event.dart';
 import 'bill_state.dart';
 

@@ -296,7 +296,7 @@ class _ViewRoomState extends State<ViewRoom> {
                 return Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(10.0),
                       child: Column(
                         children: [
                           Row(
@@ -324,12 +324,12 @@ class _ViewRoomState extends State<ViewRoom> {
                                 ],
                               ),
                               IconButton(
-                                icon: const Icon(Icons.refresh, color: Colors.white, size: 36),
+                                icon: const Icon(Icons.refresh, color: Colors.white, size: 30),
                                 onPressed: _clearCacheAndRefresh,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                   
                           Row(
                             children: [
                               Expanded(
@@ -345,7 +345,7 @@ class _ViewRoomState extends State<ViewRoom> {
                                                   ? 'Tất cả trạng thái'
                                                   : status == 'AVAILABLE'
                                                       ? 'Còn chỗ trống'
-                                                      : 'Đang cho thuê',
+                                                      : 'Hết chỗ trống',
                                               style: const TextStyle(color: Colors.black),
                                             ),
                                           ))
@@ -440,7 +440,7 @@ class _ViewRoomState extends State<ViewRoom> {
                     ),
                     if (filteredRooms.isNotEmpty && !_isLoadingRoomsFromServer)
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 2),
                         child: PaginationControls(
                           currentPage: _currentPage,
                           totalItems: _totalItems,
@@ -471,7 +471,7 @@ class _ViewRoomState extends State<ViewRoom> {
 
   Widget _buildRoomPage(RoomEntity room) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12.0),
+      margin: const EdgeInsets.only(bottom: 5.0),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),

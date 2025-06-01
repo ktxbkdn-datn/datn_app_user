@@ -36,7 +36,7 @@ class KtxButton extends StatelessWidget {
         style: TextStyle(
           color: textColor,
           fontWeight: FontWeight.bold,
-          fontSize: 18,
+          fontSize: 16,
         ),
       ),
     );

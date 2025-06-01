@@ -111,7 +111,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           Get.snackbar(
             'Lỗi',
             'File ${media.name} không được hỗ trợ (chỉ hỗ trợ jpg, jpeg, png, gif, mp4, avi)',
-            snackPosition: SnackPosition.BOTTOM,
+            snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red,
             colorText: Colors.white,
             margin: EdgeInsets.all(8),
