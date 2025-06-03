@@ -1,3 +1,4 @@
+import 'package:datn_app/feature/room/presentations/pages/view_room.dart';
 import 'package:datn_app/feature/welcome_page/welcome_page.dart';
 import 'package:datn_app/src/core/di/injection.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -73,6 +74,7 @@ class MyApp extends StatelessWidget {
         '/forgot_password': (context) => const ForgotPasswordPage(),
         '/reset_password': (context) => const ResetPasswordPage(),
         '/login_bottom_bar': (context) => const KBottomAppBar(),
+        '/view_room': (context) => const ViewRoom(),
       },
       builder: (context, child) => MultiBlocProvider(
         providers: [

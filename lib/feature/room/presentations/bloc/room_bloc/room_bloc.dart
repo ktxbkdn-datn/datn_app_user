@@ -71,7 +71,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       emit(RoomImagesLoaded(event.roomId, images, areas: state.areas));
     } catch (e) {
       if (e.toString().contains('404') || e.toString().contains('Không tìm thấy media')) {
-        // Handle 404 as no images available
         emit(RoomImagesLoaded(event.roomId, [], areas: state.areas));
       } else {
         emit(RoomError(e.toString(), areas: state.areas));
@@ -101,7 +100,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     try {
       final response = await getRooms(
         page: 1,
-        limit: 10,
+        limit: 12,
         areaId: event.areaId,
       );
       emit(RoomsLoaded(

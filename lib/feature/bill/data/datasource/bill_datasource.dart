@@ -13,7 +13,7 @@ abstract class BillRemoteDataSource {
 
   Future<Either<Failure, List<BillDetailModel>>> getMyBillDetails();
 
-  Future<Either<Failure, List<MonthlyBillModel>>> getMyBills({
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getMyBills({
     int page = 1,
     int limit = 10,
     String? billMonth,
@@ -91,7 +91,7 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
   }
 
   @override
-  Future<Either<Failure, List<MonthlyBillModel>>> getMyBills({
+  Future<Either<Failure, (List<MonthlyBillModel>, int)>> getMyBills({
     int page = 1,
     int limit = 10,
     String? billMonth,
@@ -112,16 +112,17 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
       if (responseData is Map<String, dynamic> && responseData['bills'] is List<dynamic>) {
         final bills = (responseData['bills'] as List<dynamic>)
             .map((json) {
-          if (json is Map<String, dynamic>) {
-            return MonthlyBillModel.fromJson(json);
-          } else {
-            throw ApiException('Phần tử trong danh sách không đúng định dạng: kỳ vọng Map<String, dynamic>, nhận được: ${json.runtimeType}');
-          }
-        })
+              if (json is Map<String, dynamic>) {
+                return MonthlyBillModel.fromJson(json);
+              } else {
+                throw ApiException('Phần tử trong danh sách không đúng định dạng: kỳ vọng Map<String, dynamic>, nhận được: ${json.runtimeType}');
+              }
+            })
             .toList();
-        return Right(bills);
+        final totalItems = responseData['total_items'] as int? ?? 0;
+        return Right((bills, totalItems));
       } else {
-        throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng Map với key "bills", nhận được: ${responseData.runtimeType}');
+        throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng Map với key "bills" và "total_items", nhận được: ${responseData.runtimeType}');
       }
     } catch (e) {
       return Left(_handleError(e));

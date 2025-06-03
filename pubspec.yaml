@@ -44,7 +44,7 @@ dependencies:
   path:
   flutter_pdfview:
   cached_video_player_plus: ^3.0.3
-  
+  async:
 
 dev_dependencies:
   flutter_test:

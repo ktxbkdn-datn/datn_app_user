@@ -34,7 +34,7 @@ class GetMyBills {
 
   GetMyBills(this.repository);
 
-  Future<Either<Failure, List<MonthlyBill>>> call({
+  Future<Either<Failure, (List<MonthlyBill>, int)>> call({
     int page = 1,
     int limit = 10,
     String? billMonth,

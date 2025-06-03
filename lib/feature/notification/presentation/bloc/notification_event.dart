@@ -98,7 +98,6 @@ class DeleteNotificationEvent extends NotificationEvent {
   List<Object?> get props => [notificationId];
 }
 
-// Thêm event để xử lý thông báo đẩy mới từ FCM
 class NewFcmNotificationReceived extends NotificationEvent {
   final RemoteMessage message;
 
@@ -106,4 +105,11 @@ class NewFcmNotificationReceived extends NotificationEvent {
 
   @override
   List<Object?> get props => [message];
+}
+
+class ClearCacheEvent extends NotificationEvent {
+  const ClearCacheEvent();
+
+  @override
+  List<Object?> get props => [];
 }

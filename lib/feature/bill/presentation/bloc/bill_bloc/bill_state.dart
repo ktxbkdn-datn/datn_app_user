@@ -1,15 +1,19 @@
 import 'package:equatable/equatable.dart';
 import '../../../domain/entity/bill_entities.dart';
 
-/// Thông tin phân trang cho danh sách hóa đơn hoặc chi tiết hóa đơn.
 class PaginationInfo extends Equatable {
   final int currentPage;
   final int totalPages;
+  final int totalItems;
 
-  const PaginationInfo({required this.currentPage, required this.totalPages});
+  const PaginationInfo({
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalItems,
+  });
 
   @override
-  List<Object> get props => [currentPage, totalPages];
+  List<Object> get props => [currentPage, totalPages, totalItems];
 }
 
 abstract class BillState extends Equatable {
@@ -19,13 +23,10 @@ abstract class BillState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Trạng thái ban đầu của BLoC.
 class BillInitial extends BillState {}
 
-/// Trạng thái khi đang tải dữ liệu.
 class BillLoading extends BillState {}
 
-/// Trạng thái khi dữ liệu đã được tải thành công.
 class BillLoaded extends BillState {
   final List<BillDetail> billDetails;
   final List<MonthlyBill> bills;
@@ -63,7 +64,6 @@ class BillLoaded extends BillState {
   ];
 }
 
-/// Trạng thái khi không có dữ liệu (danh sách rỗng).
 class BillEmpty extends BillState {
   final String message;
 
@@ -73,7 +73,6 @@ class BillEmpty extends BillState {
   List<Object> get props => [message];
 }
 
-/// Trạng thái khi xảy ra lỗi.
 class BillError extends BillState {
   final String message;
 

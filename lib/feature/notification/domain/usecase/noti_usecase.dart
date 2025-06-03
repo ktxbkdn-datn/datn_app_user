@@ -8,7 +8,7 @@ class GetUserNotifications {
 
   GetUserNotifications(this.repository);
 
-  Future<Either<Failure, List<Notification>>> call({
+  Future<Either<Failure, (List<Notification>, int)>> call({
     required int page,
     required int limit,
     bool? isRead,

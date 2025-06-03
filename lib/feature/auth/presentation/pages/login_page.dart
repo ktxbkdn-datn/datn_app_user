@@ -39,7 +39,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-
+    // emailController.text = "11@gmail.com";
+    // passwordController.text = "NewPass12345!";
     // Thêm listener cho FocusNode
     emailFocusNode.addListener(() {
       if (!emailFocusNode.hasFocus) {
@@ -303,8 +304,9 @@ class _LoginPageState extends State<LoginPage> {
                                         : () {
                                             context.read<AuthBloc>().add(
                                                   LoginEvent(
-                                                    email: emailController.text.trim(),
-                                                    password: passwordController.text.trim(),
+                                                     email: emailController.text.trim(),
+                                                     password: passwordController.text.trim(),
+                                            
                                                   ),
                                                 );
                                           },

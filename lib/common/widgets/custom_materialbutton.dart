@@ -1,10 +1,9 @@
-// ignore_for_file: must_be_immutable
 
 import 'package:flutter/material.dart';
 
 class KtxButton extends StatelessWidget {
   Color buttonColor;
-  Color textColor, borderSideColor; // Sửa lỗi chính tả từ boderSideColor thành borderSideColor
+  Color textColor, borderSideColor; 
   String nameButton;
   final Function()? onTap;
 
@@ -13,7 +12,7 @@ class KtxButton extends StatelessWidget {
     this.buttonColor = Colors.white,
     required this.nameButton,
     this.textColor = Colors.black,
-    this.borderSideColor = Colors.black, // Sửa lỗi chính tả
+    this.borderSideColor = Colors.black, 
     this.onTap,
   });
 
@@ -27,7 +26,7 @@ class KtxButton extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: borderSideColor, // Sửa lỗi chính tả
+          color: borderSideColor, 
         ),
         borderRadius: BorderRadius.circular(50),
       ),

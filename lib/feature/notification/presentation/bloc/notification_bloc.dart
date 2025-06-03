@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:datn_app/feature/notification/domain/entity/notification_entity.dart';
+
 import '../../domain/repository/fcm_repository.dart';
 import '../../domain/usecase/noti_media_usecase.dart';
 import '../../domain/usecase/noti_recipient_usecase.dart';
@@ -17,7 +18,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   final GetAllNotificationTypes getAllNotificationTypes;
   final GetNotificationMedia getNotificationMedia;
   final DeleteNotification deleteNotification;
-  final FcmRepository fcmRepository; // Thêm FcmRepository
+  final FcmRepository fcmRepository;
+  final Map<int, List<Notification>> _cache = {};
+  static const int _maxCacheSize = 5;
 
   NotificationBloc({
     required this.getUserNotifications,
@@ -38,14 +41,24 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<FetchNotificationTypesEvent>(_onFetchNotificationTypes);
     on<FetchNotificationMediaEvent>(_onFetchNotificationMedia);
     on<DeleteNotificationEvent>(_onDeleteNotification);
-    on<NewFcmNotificationReceived>(_onNewFcmNotificationReceived); // Thêm handler
+    on<NewFcmNotificationReceived>(_onNewFcmNotificationReceived);
+    on<ClearCacheEvent>(_onClearCache);
   }
 
   Future<void> _onFetchUserNotifications(
-      FetchUserNotificationsEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    FetchUserNotificationsEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing FetchUserNotificationsEvent: page=${event.page}, limit=${event.limit}, isRead=${event.isRead}');
+    if (_cache.containsKey(event.page)) {
+      print('Serving from cache: page=${event.page}');
+      emit(UserNotificationsLoaded(
+        notifications: _cache[event.page]!,
+        totalItems: _cache[event.page]!.length, // Total items may need API refresh
+      ));
+      return;
+    }
+
     emit(NotificationLoading());
     final result = await getUserNotifications(
       page: event.page,
@@ -53,21 +66,29 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       isRead: event.isRead,
     );
     result.fold(
-          (failure) {
+      (failure) {
         print('FetchUserNotifications failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (notifications) {
-        print('FetchUserNotifications succeeded: ${notifications.length} notifications');
-        emit(UserNotificationsLoaded(notifications: notifications));
+      (data) {
+        print('FetchUserNotifications succeeded: ${data.$1.length} notifications, total=${data.$2}');
+        _cache[event.page] = data.$1;
+        if (_cache.length > _maxCacheSize) {
+          final oldestPage = _cache.keys.reduce((a, b) => a < b ? a : b);
+          _cache.remove(oldestPage);
+        }
+        emit(UserNotificationsLoaded(
+          notifications: data.$1,
+          totalItems: data.$2,
+        ));
       },
     );
   }
 
   Future<void> _onFetchPublicNotifications(
-      FetchPublicNotificationsEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    FetchPublicNotificationsEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing FetchPublicNotificationsEvent: page=${event.page}, limit=${event.limit}');
     emit(NotificationLoading());
     final result = await getPublicNotifications(
@@ -75,11 +96,11 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       limit: event.limit,
     );
     result.fold(
-          (failure) {
+      (failure) {
         print('FetchPublicNotifications failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (notifications) {
+      (notifications) {
         print('FetchPublicNotifications succeeded: ${notifications.length} notifications');
         emit(PublicNotificationsLoaded(notifications: notifications));
       },
@@ -87,60 +108,58 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onMarkNotificationAsRead(
-      MarkNotificationAsReadEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    MarkNotificationAsReadEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing MarkNotificationAsReadEvent with notificationId: ${event.notificationId}');
     emit(NotificationLoading());
     final result = await markNotificationAsRead(event.notificationId);
     result.fold(
-          (failure) {
+      (failure) {
         print('MarkNotificationAsRead failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (recipient) {
+      (recipient) {
         print('MarkNotificationAsRead succeeded: recipientId=${recipient.id}');
         emit(NotificationMarkedAsRead(recipient: recipient));
-        add(const FetchUserNotificationsEvent(page: 1, limit: 50, isRead: null));
         add(const FetchUnreadNotificationsCountEvent());
       },
     );
   }
 
   Future<void> _onMarkAllNotificationsAsRead(
-      MarkAllNotificationsAsReadEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    MarkAllNotificationsAsReadEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing MarkAllNotificationsAsReadEvent');
     emit(NotificationLoading());
     final result = await markAllNotificationsAsRead();
     result.fold(
-          (failure) {
+      (failure) {
         print('MarkAllNotificationsAsRead failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (_) {
+      (_) {
         print('MarkAllNotificationsAsRead succeeded');
         emit(const AllNotificationsMarkedAsRead());
-        add(const FetchUserNotificationsEvent(page: 1, limit: 50, isRead: null));
         add(const FetchUnreadNotificationsCountEvent());
       },
     );
   }
 
   Future<void> _onFetchUnreadNotificationsCount(
-      FetchUnreadNotificationsCountEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    FetchUnreadNotificationsCountEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing FetchUnreadNotificationsCountEvent');
     emit(NotificationLoading());
     final result = await getUnreadNotificationsCount();
     result.fold(
-          (failure) {
+      (failure) {
         print('FetchUnreadNotificationsCount failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (count) {
+      (count) {
         print('FetchUnreadNotificationsCount succeeded: count=$count');
         emit(UnreadNotificationsCountLoaded(count: count));
       },
@@ -148,9 +167,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onFetchNotificationTypes(
-      FetchNotificationTypesEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    FetchNotificationTypesEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing FetchNotificationTypesEvent: page=${event.page}, limit=${event.limit}');
     emit(NotificationLoading());
     final result = await getAllNotificationTypes(
@@ -158,11 +177,11 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       limit: event.limit,
     );
     result.fold(
-          (failure) {
+      (failure) {
         print('FetchNotificationTypes failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (types) {
+      (types) {
         print('FetchNotificationTypes succeeded: ${types.length} types');
         emit(NotificationTypesLoaded(types: types));
       },
@@ -170,9 +189,9 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onFetchNotificationMedia(
-      FetchNotificationMediaEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    FetchNotificationMediaEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing FetchNotificationMediaEvent: notificationId=${event.notificationId}, fileType=${event.fileType}');
     emit(NotificationLoading());
     final result = await getNotificationMedia(
@@ -180,11 +199,11 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
       fileType: event.fileType,
     );
     result.fold(
-          (failure) {
+      (failure) {
         print('FetchNotificationMedia failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (media) {
+      (media) {
         print('FetchNotificationMedia succeeded: ${media.length} media items');
         emit(NotificationMediaLoaded(media: media));
       },
@@ -192,35 +211,39 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   }
 
   Future<void> _onDeleteNotification(
-      DeleteNotificationEvent event,
-      Emitter<NotificationState> emit,
-      ) async {
+    DeleteNotificationEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing DeleteNotificationEvent with notificationId: ${event.notificationId}');
     emit(NotificationLoading());
     final result = await deleteNotification(event.notificationId);
     result.fold(
-          (failure) {
+      (failure) {
         print('DeleteNotification failed: ${failure.message}');
         emit(NotificationError(message: failure.message));
       },
-          (_) {
+      (_) {
         print('DeleteNotification succeeded');
         emit(const NotificationDeleted());
-        add(const FetchUserNotificationsEvent(page: 1, limit: 50, isRead: null));
         add(const FetchUnreadNotificationsCountEvent());
       },
     );
   }
 
   Future<void> _onNewFcmNotificationReceived(
-      NewFcmNotificationReceived event,
-      Emitter<NotificationState> emit,
-      ) async {
+    NewFcmNotificationReceived event,
+    Emitter<NotificationState> emit,
+  ) async {
     print('Processing NewFcmNotificationReceived: ${event.message.data}');
     emit(NewFcmNotification(event.message));
-
-    // Cập nhật danh sách thông báo và số lượng chưa đọc
-    add(const FetchUserNotificationsEvent(page: 1, limit: 50, isRead: null));
     add(const FetchUnreadNotificationsCountEvent());
+  }
+
+  Future<void> _onClearCache(
+    ClearCacheEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
+    print('Clearing cache');
+    _cache.clear();
   }
 }

@@ -5,26 +5,25 @@ import '../../domain/entity/notification_entity.dart';
 import '../../domain/repository/noti_repository.dart';
 import '../datasource/noti_datasource.dart';
 
-
 class NotificationRepositoryImpl implements NotificationRepository {
   final NotificationRemoteDataSource remoteDataSource;
 
   NotificationRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Notification>>> getUserNotifications({
+  Future<Either<Failure, (List<Notification>, int)>> getUserNotifications({
     required int page,
     required int limit,
     bool? isRead,
   }) async {
     try {
-      final notificationModels = await remoteDataSource.getUserNotifications(
+      final (notificationModels, total) = await remoteDataSource.getUserNotifications(
         page: page,
         limit: limit,
         isRead: isRead,
       );
       final notifications = notificationModels.map((model) => model.toEntity()).toList();
-      return Right(notifications);
+      return Right((notifications, total));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

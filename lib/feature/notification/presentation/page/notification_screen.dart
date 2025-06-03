@@ -1,6 +1,8 @@
+import 'package:datn_app/common/widgets/pagination_controls.dart';
 import 'package:flutter/material.dart' hide Notification;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../common/constant/colors.dart';
 import '../../../../common/widgets/filter_tab.dart';
 import '../../domain/entity/notification_entity.dart';
@@ -25,6 +27,9 @@ class _NotificationListScreenState extends State<NotificationListScreen>
   int _unreadCount = 0;
   String _filterType = 'Chưa đọc';
   List<Notification> _personalNotifications = [];
+  int _currentPage = 1;
+  int _totalItems = 0;
+  static const int _limit = 10;
 
   @override
   bool get wantKeepAlive => true;
@@ -32,21 +37,34 @@ class _NotificationListScreenState extends State<NotificationListScreen>
   @override
   void initState() {
     super.initState();
+    _loadPersistedState();
     _fetchNotifications();
   }
 
-  void _fetchNotifications() {
+  Future<void> _loadPersistedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentPage = prefs.getInt('notification_current_page') ?? 1;
+    });
+  }
+
+  Future<void> _savePersistedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('notification_current_page', _currentPage);
+  }
+
+  void _fetchNotifications({int page = 1}) {
     setState(() {
       _isLoading = true;
       _isLoadingNotifications = true;
       _isLoadingUnreadCount = true;
+      _currentPage = page;
     });
-    context
-        .read<NotificationBloc>()
-        .add(const FetchUserNotificationsEvent(page: 1, limit: 50, isRead: null));
-    context
-        .read<NotificationBloc>()
-        .add(const FetchUnreadNotificationsCountEvent());
+    context.read<NotificationBloc>().add(
+          FetchUserNotificationsEvent(page: page, limit: _limit, isRead: null),
+        );
+    context.read<NotificationBloc>().add(const FetchUnreadNotificationsCountEvent());
+    _savePersistedState();
   }
 
   void _updateLoadingState() {
@@ -96,7 +114,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                       ),
                       IconButton(
                         icon: const Icon(Icons.refresh, color: Colors.white, size: 36),
-                        onPressed: _isLoading ? null : _fetchNotifications,
+                        onPressed: _isLoading ? null : () => _fetchNotifications(page: _currentPage),
                       ),
                     ],
                   ),
@@ -144,7 +162,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                             ),
                             action: SnackBarAction(
                               label: 'Thử lại',
-                              onPressed: _fetchNotifications,
+                              onPressed: () => _fetchNotifications(page: _currentPage),
                             ),
                           ),
                         );
@@ -156,6 +174,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                       } else if (state is UserNotificationsLoaded) {
                         setState(() {
                           _personalNotifications = state.notifications;
+                          _totalItems = state.totalItems;
                           _isInitialLoad = false;
                           _isLoadingNotifications = false;
                           _updateLoadingState();
@@ -169,11 +188,11 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                           _updateLoadingState();
                         });
                       } else if (state is NotificationMarkedAsRead) {
-                        _fetchNotifications();
+                        _fetchNotifications(page: _currentPage);
                       } else if (state is AllNotificationsMarkedAsRead) {
-                        _fetchNotifications();
+                        _fetchNotifications(page: _currentPage);
                       } else if (state is NotificationDeleted) {
-                        _fetchNotifications();
+                        _fetchNotifications(page: _currentPage);
                       }
                     },
                     builder: (context, state) {
@@ -216,7 +235,7 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                               const Text('Không thể tải thông báo'),
                               const SizedBox(height: 10),
                               ElevatedButton(
-                                onPressed: _fetchNotifications,
+                                onPressed: () => _fetchNotifications(page: _currentPage),
                                 child: const Text('Thử lại'),
                               ),
                             ],
@@ -228,176 +247,191 @@ class _NotificationListScreenState extends State<NotificationListScreen>
                         return const Center(child: Text('Không tìm thấy thông báo'));
                       }
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
-                        itemCount: notifications.length,
-                        itemBuilder: (context, index) {
-                          final notification = notifications[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 16.0),
-                            child: Slidable(
-                              key: Key(notification.notificationId.toString()),
-                              endActionPane: ActionPane(
-                                motion: const BehindMotion(),
-                                extentRatio: 0.4,
-                                children: [
-                                  if (!notification.isRead)
-                                    Builder(
-                                      builder: (cont) {
-                                        return Container(
-                                          margin: const EdgeInsets.only(left: 4.0),
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              Slidable.of(cont)!.close();
-                                              context.read<NotificationBloc>().add(
-                                                MarkNotificationAsReadEvent(
-                                                  notificationId: notification.notificationId!,
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 8.0),
+                              itemCount: notifications.length,
+                              itemBuilder: (context, index) {
+                                final notification = notifications[index];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16.0),
+                                  child: Slidable(
+                                    key: Key(notification.notificationId.toString()),
+                                    endActionPane: ActionPane(
+                                      motion: const BehindMotion(),
+                                      extentRatio: 0.4,
+                                      children: [
+                                        if (!notification.isRead)
+                                          Builder(
+                                            builder: (cont) {
+                                              return Container(
+                                                margin: const EdgeInsets.only(left: 4.0),
+                                                child: ElevatedButton(
+                                                  onPressed: () {
+                                                    Slidable.of(cont)!.close();
+                                                    context.read<NotificationBloc>().add(
+                                                          MarkNotificationAsReadEvent(
+                                                            notificationId: notification.notificationId!,
+                                                          ),
+                                                        );
+                                                  },
+                                                  style: ElevatedButton.styleFrom(
+                                                    shape: const CircleBorder(),
+                                                    backgroundColor: Colors.blue,
+                                                    padding: const EdgeInsets.all(10),
+                                                    minimumSize: const Size(40, 40),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.check,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  ),
                                                 ),
                                               );
                                             },
-                                            style: ElevatedButton.styleFrom(
-                                              shape: const CircleBorder(),
-                                              backgroundColor: Colors.blue,
-                                              padding: const EdgeInsets.all(10),
-                                              minimumSize: const Size(40, 40),
-                                            ),
-                                            child: const Icon(
-                                              Icons.check,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  Builder(
-                                    builder: (cont) {
-                                      return Container(
-                                        margin: const EdgeInsets.only(left: 4.0, right: 4.0),
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            Slidable.of(cont)!.close();
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text('Xác nhận xóa'),
-                                                content: const Text('Bạn có chắc muốn xóa thông báo này?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(context),
-                                                    child: const Text('Hủy'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      context.read<NotificationBloc>().add(
-                                                        DeleteNotificationEvent(
-                                                          notificationId: notification.notificationId!,
+                                        Builder(
+                                          builder: (cont) {
+                                            return Container(
+                                              margin: const EdgeInsets.only(left: 4.0, right: 4.0),
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  Slidable.of(cont)!.close();
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => AlertDialog(
+                                                      title: const Text('Xác nhận xóa'),
+                                                      content: const Text('Bạn có chắc muốn xóa thông báo này?'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.pop(context),
+                                                          child: const Text('Hủy'),
                                                         ),
-                                                      );
-                                                      Navigator.pop(context);
-                                                    },
-                                                    child: const Text('Xóa'),
-                                                  ),
-                                                ],
+                                                        TextButton(
+                                                          onPressed: () {
+                                                            context.read<NotificationBloc>().add(
+                                                                  DeleteNotificationEvent(
+                                                                    notificationId: notification.notificationId!,
+                                                                  ),
+                                                                );
+                                                            Navigator.pop(context);
+                                                          },
+                                                          child: const Text('Xóa'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  shape: const CircleBorder(),
+                                                  backgroundColor: Colors.red,
+                                                  padding: const EdgeInsets.all(10),
+                                                  minimumSize: const Size(40, 40),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.delete,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
                                               ),
                                             );
                                           },
-                                          style: ElevatedButton.styleFrom(
-                                            shape: const CircleBorder(),
-                                            backgroundColor: Colors.red,
-                                            padding: const EdgeInsets.all(10),
-                                            minimumSize: const Size(40, 40),
-                                          ),
-                                          child: const Icon(
-                                            Icons.delete,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: notification.isRead
-                                      ? Colors.white
-                                      : Colors.lightBlueAccent[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => NotificationDetailScreen(
-                                              title: notification.title,
-                                              message: notification.message,
-                                              timestamp: notification.createdAt ?? '',
-                                              notificationId: notification.notificationId!,
-                                              recipientId: notification.recipientId,
-                                            ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: notification.isRead
+                                            ? Colors.white
+                                            : Colors.lightBlueAccent[50],
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 5),
                                           ),
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(16.0),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              _getIconForType(),
-                                              size: 30,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    notification.title ?? 'Untitled',
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.black87,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => NotificationDetailScreen(
+                                                    title: notification.title,
+                                                    message: notification.message,
+                                                    timestamp: notification.createdAt ?? '',
+                                                    notificationId: notification.notificationId!,
+                                                    recipientId: notification.recipientId,
                                                   ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'Thông báo',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey.shade600,
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(16.0),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    _getIconForType(),
+                                                    size: 30,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          notification.title ?? 'Untitled',
+                                                          style: const TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Colors.black87,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          'Thông báo',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: Colors.grey.shade600,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
-                          );
-                        },
+                          ),
+                          if (_totalItems > _limit)
+                            PaginationControls(
+                              currentPage: _currentPage,
+                              totalItems: _totalItems,
+                              limit: _limit,
+                              onPageChanged: (page) {
+                                _fetchNotifications(page: page);
+                              },
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -417,3 +451,4 @@ class _NotificationListScreenState extends State<NotificationListScreen>
     );
   }
 }
+

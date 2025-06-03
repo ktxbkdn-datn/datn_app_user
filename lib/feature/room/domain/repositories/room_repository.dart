@@ -1,4 +1,3 @@
-
 import '../entities/area_entity.dart';
 import '../entities/room_entity.dart';
 import '../entities/room_image_entity.dart';

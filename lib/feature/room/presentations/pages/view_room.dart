@@ -1,4 +1,5 @@
 import 'package:datn_app/common/constant/api_constant.dart';
+import 'package:datn_app/feature/room/presentations/widget/room_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,7 +16,7 @@ import '../../domain/entities/room_entity.dart';
 import '../../domain/entities/room_image_entity.dart';
 import '../bloc/room_bloc/room_bloc.dart';
 import '../widget/full_screen.dart';
-import '../widget/room_decrip.dart';
+
 
 class ViewRoom extends StatefulWidget {
   final bool showBackButton;
@@ -30,7 +31,7 @@ class _ViewRoomState extends State<ViewRoom> {
   final ScrollController _scrollController = ScrollController();
   String _filterStatus = 'All';
   int? _selectedAreaId;
-  List<RoomEntity> _allRooms = [];
+  List<RoomEntity> _filteredRooms = [];
   List<AreaModel> _allAreas = [];
   Map<int, List<RoomImageEntity>> _roomImages = {};
   Set<int> _pendingImageFetches = {};
@@ -51,13 +52,12 @@ class _ViewRoomState extends State<ViewRoom> {
     Future.microtask(() async {
       context.read<RoomBloc>().add(const FetchAreasEvent(page: 1, limit: 100));
       await Future.delayed(const Duration(milliseconds: 100));
-      context.read<RoomBloc>().add(const FetchRoomsEvent(page: 1, limit: _limit));
+      _fetchRooms();
     });
   }
 
   Future<void> _loadCachedData() async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedRooms = prefs.getString('rooms');
     final cachedAreas = prefs.getString('areas');
     final cachedFilterStatus = prefs.getString('room_filter_status') ?? 'All';
     final cachedAreaId = prefs.getInt('room_filter_area_id');
@@ -84,9 +84,8 @@ class _ViewRoomState extends State<ViewRoom> {
     }
   }
 
-  Future<void> _saveCachedData(List<RoomEntity> rooms, List<AreaModel> areas) async {
+  Future<void> _saveCachedData(List<AreaModel> areas) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('rooms', jsonEncode(rooms.map((e) => e.toJson()).toList()));
     await prefs.setString('areas', jsonEncode(areas.map((e) => e.toJson()).toList()));
     await prefs.setString('room_filter_status', _filterStatus);
     await prefs.setInt('room_current_page', _currentPage);
@@ -99,13 +98,12 @@ class _ViewRoomState extends State<ViewRoom> {
 
   Future<void> _clearCacheAndRefresh() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('rooms');
     await prefs.remove('areas');
     await prefs.remove('room_filter_status');
     await prefs.remove('room_filter_area_id');
     await prefs.remove('room_current_page');
     setState(() {
-      _allRooms = [];
+      _filteredRooms = [];
       _allAreas = [];
       _roomImages = {};
       _pendingImageFetches = {};
@@ -120,7 +118,19 @@ class _ViewRoomState extends State<ViewRoom> {
     });
     context.read<RoomBloc>().add(const FetchAreasEvent(page: 1, limit: 100));
     await Future.delayed(const Duration(milliseconds: 100));
-    context.read<RoomBloc>().add(const FetchRoomsEvent(page: 1, limit: _limit));
+    _fetchRooms();
+  }
+
+  void _fetchRooms() {
+    setState(() {
+      _isLoadingRoomsFromServer = true;
+    });
+    context.read<RoomBloc>().add(FetchRoomsEvent(
+      page: _currentPage,
+      limit: _limit,
+      areaId: _selectedAreaId,
+      available: _filterStatus == 'All' ? null : _filterStatus == 'AVAILABLE' ? true : false,
+    ));
   }
 
   void _resetFilters() {
@@ -129,9 +139,9 @@ class _ViewRoomState extends State<ViewRoom> {
       _selectedAreaId = null;
       _currentPage = 1;
       _isLoadingRoomsFromServer = true;
-      _saveCachedData(_allRooms, _allAreas);
+      _saveCachedData(_allAreas);
     });
-    context.read<RoomBloc>().add(const FetchRoomsEvent(page: 1, limit: _limit));
+    _fetchRooms();
   }
 
   void _showImagesDialog(int roomId) {
@@ -220,21 +230,21 @@ class _ViewRoomState extends State<ViewRoom> {
                   );
                 } else if (state is RoomsLoaded) {
                   setState(() {
-                    _allRooms = state.rooms;
+                    _filteredRooms = state.rooms;
                     _totalItems = state.total;
                     _totalPages = state.pages;
                     _currentPage = state.currentPage;
                     _isInitialLoad = false;
                     _isLoadingRoomsFromServer = false;
                   });
-                  _saveCachedData(state.rooms, _allAreas);
+                  _saveCachedData(_allAreas);
                 } else if (state is AreasLoaded) {
                   setState(() {
                     _allAreas = state.areas as List<AreaModel>;
                     _isLoadingAreas = false;
                   });
                   print('Areas loaded: ${state.areas.map((a) => a.name).toList()}');
-                  _saveCachedData(_allRooms, state.areas as List<AreaModel>);
+                  _saveCachedData(state.areas as List<AreaModel>);
                 } else if (state is RoomImagesLoaded) {
                   setState(() {
                     _roomImages[state.roomId] = state.images;
@@ -257,27 +267,6 @@ class _ViewRoomState extends State<ViewRoom> {
                 }
               },
               builder: (context, state) {
-                List<RoomEntity> filteredRooms = _allRooms;
-                if (_filterStatus != 'All') {
-                  filteredRooms = _allRooms.where((room) => room.status == _filterStatus).toList();
-                }
-                if (_selectedAreaId != null) {
-                  filteredRooms = filteredRooms.where((room) => room.areaId == _selectedAreaId).toList();
-                }
-
-                if (state is RoomError && filteredRooms.isNotEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    Get.snackbar(
-                      'Thông báo',
-                      'Sử dụng dữ liệu cũ do lỗi: ${state.message}',
-                      snackPosition: SnackPosition.TOP,
-                      backgroundColor: Colors.orange,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
-                  });
-                }
-
                 List<AreaEntity> uniqueAreas = [];
                 Set<int> seenAreaIds = {};
                 for (var area in _allAreas) {
@@ -291,6 +280,11 @@ class _ViewRoomState extends State<ViewRoom> {
                     !uniqueAreas.any((area) => area.areaId == _selectedAreaId) &&
                     uniqueAreas.isNotEmpty) {
                   _selectedAreaId = null;
+                }
+
+                List<RoomEntity> displayedRooms = _filteredRooms;
+                if (_filterStatus != 'All') {
+                  displayedRooms = _filteredRooms.where((room) => room.status == _filterStatus).toList();
                 }
 
                 return Column(
@@ -329,7 +323,6 @@ class _ViewRoomState extends State<ViewRoom> {
                               ),
                             ],
                           ),
-                   
                           Row(
                             children: [
                               Expanded(
@@ -353,7 +346,10 @@ class _ViewRoomState extends State<ViewRoom> {
                                   onChanged: (value) {
                                     setState(() {
                                       _filterStatus = value!;
-                                      _saveCachedData(_allRooms, _allAreas);
+                                      _currentPage = 1;
+                                      _isLoadingRoomsFromServer = true;
+                                      _saveCachedData(_allAreas);
+                                      _fetchRooms();
                                     });
                                   },
                                 ),
@@ -388,11 +384,12 @@ class _ViewRoomState extends State<ViewRoom> {
                                               setState(() {
                                                 _selectedAreaId = value;
                                                 _currentPage = 1;
-                                                _saveCachedData(_allRooms, _allAreas);
+                                                _isLoadingRoomsFromServer = true;
+                                                _saveCachedData(_allAreas);
                                                 if (value != null) {
                                                   context.read<RoomBloc>().add(FilterRoomsByAreaEvent(value));
                                                 } else {
-                                                  context.read<RoomBloc>().add(const FetchRoomsEvent(page: 1, limit: _limit));
+                                                  _fetchRooms();
                                                 }
                                               });
                                             },
@@ -406,18 +403,18 @@ class _ViewRoomState extends State<ViewRoom> {
                     Expanded(
                       child: _isLoadingRoomsFromServer
                           ? const SizedBox()
-                          : filteredRooms.isEmpty
+                          : displayedRooms.isEmpty
                               ? Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        _allRooms.isEmpty
+                                        _totalItems == 0
                                             ? 'Không có phòng'
                                             : 'Không có phòng phù hợp với bộ lọc',
                                         style: const TextStyle(color: Colors.white, fontSize: 16),
                                       ),
-                                      if (_allRooms.isNotEmpty)
+                                      if (_totalItems > 0)
                                         TextButton(
                                           onPressed: _resetFilters,
                                           child: const Text(
@@ -431,14 +428,19 @@ class _ViewRoomState extends State<ViewRoom> {
                               : ListView.builder(
                                   controller: _scrollController,
                                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                  itemCount: filteredRooms.length,
+                                  itemCount: displayedRooms.length,
                                   itemBuilder: (context, index) {
-                                    final room = filteredRooms[index];
-                                    return _buildRoomPage(room);
+                                    final room = displayedRooms[index];
+                                    return RoomItemWidget(
+                                      room: room,
+                                      sanitize: sanitize,
+                                      onShowImages: () => _showImagesDialog(room.roomId),
+                                      onRegister: () => _registerForRoom(room),
+                                    );
                                   },
                                 ),
                     ),
-                    if (filteredRooms.isNotEmpty && !_isLoadingRoomsFromServer)
+                    if (displayedRooms.isNotEmpty && !_isLoadingRoomsFromServer)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: PaginationControls(
@@ -449,13 +451,9 @@ class _ViewRoomState extends State<ViewRoom> {
                             setState(() {
                               _currentPage = page;
                               _isLoadingRoomsFromServer = true;
-                              _saveCachedData(_allRooms, _allAreas);
+                              _saveCachedData(_allAreas);
                             });
-                            context.read<RoomBloc>().add(FetchRoomsEvent(
-                              page: page,
-                              limit: _limit,
-                              areaId: _selectedAreaId,
-                            ));
+                            _fetchRooms();
                           },
                         ),
                       ),
@@ -465,92 +463,6 @@ class _ViewRoomState extends State<ViewRoom> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRoomPage(RoomEntity room) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 5.0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 3, spreadRadius: 1),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sanitize(room.name),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 5),
-            const Text(
-              'Mô tả:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            ExpandableDescription(text: sanitize(room.description ?? 'Không có mô tả')),
-            const SizedBox(height: 5),
-            Text(
-              'Giá: ${room.price} VND',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Số người: ${room.currentPersonNumber}/${room.capacity}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Trạng thái: ${room.status == 'AVAILABLE' ? 'Còn chỗ trống' : 'Đang cho thuê'}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: room.status == 'AVAILABLE' ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _showImagesDialog(room.roomId),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text(
-                    'Xem ảnh',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => _registerForRoom(room),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text(
-                    'Đăng ký chờ xem phòng',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

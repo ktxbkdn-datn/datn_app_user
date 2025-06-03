@@ -12,7 +12,7 @@ abstract class BillRepository {
 
   Future<Either<Failure, List<BillDetail>>> getMyBillDetails();
 
-  Future<Either<Failure, List<MonthlyBill>>> getMyBills({
+  Future<Either<Failure, (List<MonthlyBill>, int)>> getMyBills({
     int page = 1,
     int limit = 10,
     String? billMonth,

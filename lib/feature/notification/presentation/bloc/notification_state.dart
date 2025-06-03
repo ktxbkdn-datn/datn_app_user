@@ -19,11 +19,15 @@ class NotificationLoading extends NotificationState {}
 
 class UserNotificationsLoaded extends NotificationState {
   final List<Notification> notifications;
+  final int totalItems;
 
-  const UserNotificationsLoaded({required this.notifications});
+  const UserNotificationsLoaded({
+    required this.notifications,
+    required this.totalItems,
+  });
 
   @override
-  List<Object> get props => [notifications];
+  List<Object> get props => [notifications, totalItems];
 }
 
 class PublicNotificationsLoaded extends NotificationState {
@@ -94,7 +98,6 @@ class NotificationError extends NotificationState {
   List<Object> get props => [message];
 }
 
-// Thêm state để xử lý thông báo đẩy mới
 class NewFcmNotification extends NotificationState {
   final RemoteMessage message;
 

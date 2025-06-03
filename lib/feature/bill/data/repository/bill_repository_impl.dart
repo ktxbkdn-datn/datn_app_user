@@ -28,7 +28,7 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<Either<Failure, List<MonthlyBill>>> getMyBills({
+  Future<Either<Failure, (List<MonthlyBill>, int)>> getMyBills({
     int page = 1,
     int limit = 10,
     String? billMonth,
@@ -40,6 +40,10 @@ class BillRepositoryImpl implements BillRepository {
       billMonth: billMonth,
       paymentStatus: paymentStatus,
     );
-    return result.map((models) => models.map((model) => model.toEntity()).toList());
+    return result.map((data) {
+      final bills = data.$1.map((model) => model.toEntity()).toList();
+      final totalItems = data.$2;
+      return (bills, totalItems);
+    });
   }
 }

@@ -3,7 +3,7 @@ import '../../../../src/core/network/api_client.dart';
 import '../model/notification_model.dart';
 
 abstract class NotificationRemoteDataSource {
-  Future<List<NotificationModel>> getUserNotifications({
+  Future<(List<NotificationModel>, int)> getUserNotifications({
     required int page,
     required int limit,
     bool? isRead,
@@ -21,7 +21,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   NotificationRemoteDataSourceImpl(this.apiService);
 
   @override
-  Future<List<NotificationModel>> getUserNotifications({
+  Future<(List<NotificationModel>, int)> getUserNotifications({
     required int page,
     required int limit,
     bool? isRead,
@@ -38,9 +38,11 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         queryParams: queryParams,
       );
       print('API Response: /me/notifications -> $response');
-      return (response['personal_notifications'] as List)
+      final notifications = (response['personal_notifications'] as List)
           .map((json) => NotificationModel.fromJson(json))
           .toList();
+      final total = response['total'] as int? ?? 0;
+      return (notifications, total);
     } catch (e) {
       print('Error in getUserNotifications: $e');
       rethrow;
