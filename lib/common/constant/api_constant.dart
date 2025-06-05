@@ -1,12 +1,14 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 String getAPIbaseUrl() {
-  if (kIsWeb) {
-    // Trên web, sử dụng localhost hoặc IP của máy host
-    return 'http://localhost:5000/api';
-    // Nếu bạn chạy API trên một IP khác, thay localhost bằng IP của máy (ví dụ: 'http://192.168.x.x:5000/api')
+  if (kReleaseMode) {
+    return 'https://kytucxa.dev.dut.udn.vn/api';
   } else {
-    // Trên mobile (Android emulator), sử dụng 10.0.2.2
-    return 'http://10.0.2.2:5000/api';
+    // Local development
+    if (kIsWeb) {
+      return 'http://localhost:5000/api';
+    } else {
+      return 'http://10.0.2.2:5000/api';
+    }
   }
 }

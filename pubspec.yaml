@@ -45,11 +45,10 @@ dependencies:
   flutter_pdfview:
   cached_video_player_plus: ^3.0.3
   async:
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0 # Hạ cấp theo gợi ý
+  flutter_lints: ^5.0.0 
 
 flutter:
   uses-material-design: true

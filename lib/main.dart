@@ -26,35 +26,25 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('Initializing Firebase...');
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
   } catch (e) {
-    print('Error initializing Firebase: $e');
     Get.snackbar('Lỗi', 'Không thể khởi tạo Firebase: $e', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 5));
   }
-
   print('Setting up dependency injection...');
   try {
     await setup(GlobalKey<NavigatorState>());
-    print('Dependency injection setup completed');
   } catch (e) {
     print('Error setting up dependency injection: $e');
   }
-
-  print('Initializing FCM...');
   try {
     final fcmService = getIt<FcmService>();
     await fcmService.init(null);
-    print('FCM initialized successfully');
   } catch (e) {
     print('Error initializing FCM: $e');
   }
-
-  print('Running app...');
   runApp(const MyApp());
 }
 
