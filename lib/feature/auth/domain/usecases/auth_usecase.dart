@@ -95,6 +95,8 @@ class UpdateUserProfile {
     String? cccd,
     String? dateOfBirth,
     String? className,
+    String? studentCode, // thêm
+    String? hometown,    // thêm
   }) async {
     return await repository.updateUserProfile(
       email: email,
@@ -103,6 +105,8 @@ class UpdateUserProfile {
       cccd: cccd,
       dateOfBirth: dateOfBirth,
       className: className,
+      studentCode: studentCode, // thêm
+      hometown: hometown,       // thêm
     );
   }
 }

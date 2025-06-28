@@ -1,15 +1,17 @@
-import 'package:datn_app/common/constant/api_constant.dart';
+import 'package:datn_app/common/components/app_background.dart';
+import 'package:datn_app/common/utils/responsive_utils.dart';
 import 'package:datn_app/feature/room/presentations/widget/room_item_widget.dart';
+import 'package:datn_app/common/widgets/pagination_controls.dart';
+import 'package:datn_app/common/widgets/no_spell_check_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get/get.dart';
 
 import '../../../register/presentation/page/room_registation_page.dart';
+import '../../../register/presentation/bloc/registration_bloc.dart';
 import 'dart:convert';
 import 'dart:async';
-import '../../../../common/constant/colors.dart';
-import '../../../../common/widgets/pagination_controls.dart';
 import '../../domain/entities/area_entity.dart';
 import '../../data/models/area_model.dart';
 import '../../domain/entities/room_entity.dart';
@@ -35,15 +37,11 @@ class _ViewRoomState extends State<ViewRoom> {
   List<AreaModel> _allAreas = [];
   Map<int, List<RoomImageEntity>> _roomImages = {};
   Set<int> _pendingImageFetches = {};
-  bool _isInitialLoad = true;
   bool _isLoadingAreas = true;
   bool _isLoadingRoomsFromServer = true;
   int _currentPage = 1;
   int _totalItems = 0;
-  int _totalPages = 1;
   static const int _limit = 12;
-  static String _baseUrl = getAPIbaseUrl();
-  bool _isLoadingImages = false;
 
   @override
   void initState() {
@@ -67,7 +65,6 @@ class _ViewRoomState extends State<ViewRoom> {
       _filterStatus = cachedFilterStatus;
       _selectedAreaId = cachedAreaId;
       _currentPage = cachedPage;
-      _isInitialLoad = false;
     });
 
     if (cachedAreas != null) {
@@ -111,8 +108,6 @@ class _ViewRoomState extends State<ViewRoom> {
       _selectedAreaId = null;
       _currentPage = 1;
       _totalItems = 0;
-      _totalPages = 1;
-      _isInitialLoad = true;
       _isLoadingAreas = true;
       _isLoadingRoomsFromServer = true;
     });
@@ -152,7 +147,6 @@ class _ViewRoomState extends State<ViewRoom> {
     }
 
     setState(() {
-      _isLoadingImages = true;
       _pendingImageFetches.add(roomId);
     });
     context.read<RoomBloc>().add(FetchRoomImagesEvent(roomId));
@@ -176,292 +170,393 @@ class _ViewRoomState extends State<ViewRoom> {
   }
 
   void _registerForRoom(RoomEntity room) {
-    String areaName = 'Không xác định';
-    final area = _allAreas.firstWhere(
-      (area) => area.areaId == room.areaId,
-      orElse: () => AreaModel(areaId: room.areaId, name: 'Không xác định'),
-    );
-    areaName = area.name;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RoomRegistrationPage(room: room),
-      ),
-    );
+    try {
+      // Try to access the bloc first to check if it's available
+      final bloc = BlocProvider.of<RegistrationBloc>(context);
+      
+      // Wrap the RoomRegistrationPage with BlocProvider.value to ensure RegistrationBloc is available
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BlocProvider.value(
+            value: bloc,
+            child: RoomRegistrationPage(room: room),
+          ),
+        ),
+      );
+    } catch (e) {
+      // If RegistrationBloc is not accessible for any reason, navigate without provider
+      // The RoomRegistrationPage will create its own bloc instance if needed
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RoomRegistrationPage(room: room),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    return AppBackground(
+      child: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          if (_isLoadingImages || _isLoadingRoomsFromServer)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-          SafeArea(
-            child: BlocConsumer<RoomBloc, RoomState>(
-              listener: (context, state) {
-                if (state is RoomError) {
-                  setState(() {
-                    _isLoadingImages = false;
-                    _isLoadingAreas = false;
-                    _isLoadingRoomsFromServer = false;
-                    _pendingImageFetches.clear();
-                  });
+          BlocConsumer<RoomBloc, RoomState>(
+            listener: (context, state) {
+              if (state is RoomError) {
+                setState(() {
+                  _isLoadingAreas = false;
+                  _isLoadingRoomsFromServer = false;
+                  _pendingImageFetches.clear();
+                });
+                Get.snackbar(
+                  'Lỗi',
+                  state.message,
+                  snackPosition: SnackPosition.TOP,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                  duration: const Duration(seconds: 3),
+                );
+              } else if (state is RoomsLoaded) {
+                setState(() {
+                  _filteredRooms = state.rooms;
+                  _totalItems = state.total;
+                  _currentPage = state.currentPage;
+                  _isLoadingRoomsFromServer = false;
+                });
+                _saveCachedData(_allAreas);
+              } else if (state is AreasLoaded) {
+                setState(() {
+                  _allAreas = state.areas as List<AreaModel>;
+                  _isLoadingAreas = false;
+                });
+                print('Areas loaded: ${state.areas.map((a) => a.name).toList()}');
+                _saveCachedData(state.areas as List<AreaModel>);
+              } else if (state is RoomImagesLoaded) {
+                setState(() {
+                  _roomImages[state.roomId] = state.images;
+                  _pendingImageFetches.remove(state.roomId);
+                });
+                print('Images loaded for room ${state.roomId}: ${state.images.map((i) => i.imageUrl).toList()}');
+                if (state.images.isNotEmpty) {
+                  _openImagesDialog(state.roomId, state.images);
+                } else {
                   Get.snackbar(
-                    'Lỗi',
-                    state.message,
+                    'Thông báo',
+                    'Chưa có ảnh hoặc video cho phòng này',
                     snackPosition: SnackPosition.TOP,
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.blue,
                     colorText: Colors.white,
                     duration: const Duration(seconds: 3),
                   );
-                } else if (state is RoomsLoaded) {
-                  setState(() {
-                    _filteredRooms = state.rooms;
-                    _totalItems = state.total;
-                    _totalPages = state.pages;
-                    _currentPage = state.currentPage;
-                    _isInitialLoad = false;
-                    _isLoadingRoomsFromServer = false;
-                  });
-                  _saveCachedData(_allAreas);
-                } else if (state is AreasLoaded) {
-                  setState(() {
-                    _allAreas = state.areas as List<AreaModel>;
-                    _isLoadingAreas = false;
-                  });
-                  print('Areas loaded: ${state.areas.map((a) => a.name).toList()}');
-                  _saveCachedData(state.areas as List<AreaModel>);
-                } else if (state is RoomImagesLoaded) {
-                  setState(() {
-                    _roomImages[state.roomId] = state.images;
-                    _pendingImageFetches.remove(state.roomId);
-                    _isLoadingImages = false;
-                  });
-                  print('Images loaded for room ${state.roomId}: ${state.images.map((i) => i.imageUrl).toList()}');
-                  if (state.images.isNotEmpty) {
-                    _openImagesDialog(state.roomId, state.images);
-                  } else {
-                    Get.snackbar(
-                      'Thông báo',
-                      'Chưa có ảnh hoặc video cho phòng này',
-                      snackPosition: SnackPosition.TOP,
-                      backgroundColor: Colors.blue,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
-                  }
                 }
-              },
-              builder: (context, state) {
-                List<AreaEntity> uniqueAreas = [];
-                Set<int> seenAreaIds = {};
-                for (var area in _allAreas) {
-                  if (!seenAreaIds.contains(area.areaId)) {
-                    seenAreaIds.add(area.areaId);
-                    uniqueAreas.add(area);
-                  }
+              }
+            },
+            builder: (context, state) {
+              List<AreaEntity> uniqueAreas = [];
+              Set<int> seenAreaIds = {};
+              for (var area in _allAreas) {
+                if (!seenAreaIds.contains(area.areaId)) {
+                  seenAreaIds.add(area.areaId);
+                  uniqueAreas.add(area);
                 }
+              }
 
-                if (_selectedAreaId != null &&
-                    !uniqueAreas.any((area) => area.areaId == _selectedAreaId) &&
-                    uniqueAreas.isNotEmpty) {
-                  _selectedAreaId = null;
-                }
+              if (_selectedAreaId != null &&
+                  !uniqueAreas.any((area) => area.areaId == _selectedAreaId) &&
+                  uniqueAreas.isNotEmpty) {
+                _selectedAreaId = null;
+              }
 
-                List<RoomEntity> displayedRooms = _filteredRooms;
-                if (_filterStatus != 'All') {
-                  displayedRooms = _filteredRooms.where((room) => room.status == _filterStatus).toList();
-                }
+              List<RoomEntity> displayedRooms = _filteredRooms;
+              if (_filterStatus != 'All') {
+                displayedRooms = _filteredRooms.where((room) => room.status == _filterStatus).toList();
+              }
 
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  if (widget.showBackButton)
-                                    IconButton(
-                                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 36),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await _clearCacheAndRefresh();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  controller: _scrollController,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(ResponsiveUtils.wp(context, 2.5)),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    if (widget.showBackButton)
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.arrow_back,
+                                          color: Colors.black, 
+                                          size: ResponsiveUtils.sp(context, 36)
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                    SizedBox(width: ResponsiveUtils.wp(context, 2)),
+                                    NoSpellCheckText(
+                                      text: 'Danh sách phòng',
+                                      style: TextStyle(
+                                        fontSize: ResponsiveUtils.sp(context, 24),
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                        letterSpacing: 0.2,
+                                        shadows: [Shadow(color: Colors.black12, blurRadius: 2)],
+                                      ),
                                     ),
+                                  ],
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.refresh, 
+                                    color: Colors.black, 
+                                    size: ResponsiveUtils.sp(context, 30)
+                                  ),
+                                  onPressed: _clearCacheAndRefresh,
+                                  tooltip: 'Làm mới',
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: ResponsiveUtils.hp(context, 1.2)),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 220, // Set a minimum width for the status dropdown
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const NoSpellCheckText(text: 'Trạng thái', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.5),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                                          child: DropdownButtonHideUnderline(
+                                            child: Material(
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                                child: DropdownButton<String>(
+                                                  value: _filterStatus,
+                                                  dropdownColor: Colors.white.withOpacity(0.9),
+                                                  isExpanded: true,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500, fontSize: 15),
+                                                  items: [
+                                                    DropdownMenuItem(value: 'All', child: NoSpellCheckText(text: 'Tất cả trạng thái')),
+                                                    DropdownMenuItem(value: 'AVAILABLE', child: NoSpellCheckText(text: 'Còn chỗ trống')),
+                                                    DropdownMenuItem(value: 'OCCUPIED', child: NoSpellCheckText(text: 'Hết chỗ trống')),
+                                                  ],
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      _filterStatus = value!;
+                                                      _currentPage = 1;
+                                                      _isLoadingRoomsFromServer = true;
+                                                      _saveCachedData(_allAreas);
+                                                      _fetchRooms();
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   const SizedBox(width: 8),
-                                  const Text(
-                                    'Danh sách phòng',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      shadows: [Shadow(color: Colors.black26, blurRadius: 4)],
+                                  SizedBox(
+                                    width: 220, // Set a minimum width for the area dropdown
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const NoSpellCheckText(text: 'Khu vực', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF334155))),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.5),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                                          child: DropdownButtonHideUnderline(
+                                            child: _isLoadingAreas
+                                                ? const Center(child: CircularProgressIndicator())
+                                                : state is RoomError
+                                                    ? const Center(
+                                                        child: NoSpellCheckText(
+                                                          text: 'Lỗi tải khu vực',
+                                                          style: TextStyle(color: Colors.red),
+                                                        ),
+                                                      )
+                                                    : Material(
+                                                        child: DropdownButton<int>(
+                                                          value: _selectedAreaId,
+                                                          dropdownColor: Colors.white.withOpacity(0.9),
+                                                          isExpanded: true,
+                                                          borderRadius: BorderRadius.circular(10),
+                                                          style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500, fontSize: 15),
+                                                          hint: const NoSpellCheckText(text: 'Tất cả khu vực', style: TextStyle(color: Color(0xFF64748B))),
+                                                          items: [
+                                                            const DropdownMenuItem<int>(
+                                                              value: null,
+                                                              child: NoSpellCheckText(text: 'Tất cả khu vực'),
+                                                            ),
+                                                            ...uniqueAreas.map((area) => DropdownMenuItem<int>(
+                                                                  value: area.areaId,
+                                                                  child: NoSpellCheckText(text: sanitize(area.name)),
+                                                                )),
+                                                          ],
+                                                          onChanged: (value) {
+                                                            setState(() {
+                                                              _selectedAreaId = value;
+                                                              _currentPage = 1;
+                                                              _isLoadingRoomsFromServer = true;
+                                                              _saveCachedData(_allAreas);
+                                                              if (value != null) {
+                                                                context.read<RoomBloc>().add(FilterRoomsByAreaEvent(value));
+                                                              } else {
+                                                                _fetchRooms();
+                                                              }
+                                                            });
+                                                          },
+                                                        ),
+                                                      ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.refresh, color: Colors.white, size: 30),
-                                onPressed: _clearCacheAndRefresh,
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButton<String>(
-                                  value: _filterStatus,
-                                  dropdownColor: Colors.white.withOpacity(0.8),
-                                  isExpanded: true,
-                                  items: ['All', 'AVAILABLE', 'OCCUPIED']
-                                      .map((status) => DropdownMenuItem<String>(
-                                            value: status,
-                                            child: Text(
-                                              status == 'All'
-                                                  ? 'Tất cả trạng thái'
-                                                  : status == 'AVAILABLE'
-                                                      ? 'Còn chỗ trống'
-                                                      : 'Hết chỗ trống',
-                                              style: const TextStyle(color: Colors.black),
-                                            ),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _filterStatus = value!;
-                                      _currentPage = 1;
-                                      _isLoadingRoomsFromServer = true;
-                                      _saveCachedData(_allAreas);
-                                      _fetchRooms();
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _isLoadingAreas
-                                    ? const Center(child: CircularProgressIndicator())
-                                    : state is RoomError
-                                        ? const Center(
-                                            child: Text(
-                                              'Lỗi tải khu vực',
-                                              style: TextStyle(color: Colors.white),
-                                            ),
-                                          )
-                                        : DropdownButton<int>(
-                                            value: _selectedAreaId,
-                                            dropdownColor: Colors.white.withOpacity(0.8),
-                                            isExpanded: true,
-                                            hint: const Text('Tất cả khu vực', style: TextStyle(color: Colors.white)),
-                                            items: [
-                                              const DropdownMenuItem<int>(
-                                                value: null,
-                                                child: Text('Tất cả khu vực'),
-                                              ),
-                                              ...uniqueAreas.map((area) => DropdownMenuItem<int>(
-                                                    value: area.areaId,
-                                                    child: Text(sanitize(area.name)),
-                                                  )),
-                                            ],
-                                            onChanged: (value) {
-                                              setState(() {
-                                                _selectedAreaId = value;
-                                                _currentPage = 1;
-                                                _isLoadingRoomsFromServer = true;
-                                                _saveCachedData(_allAreas);
-                                                if (value != null) {
-                                                  context.read<RoomBloc>().add(FilterRoomsByAreaEvent(value));
-                                                } else {
-                                                  _fetchRooms();
-                                                }
-                                              });
-                                            },
-                                          ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: _isLoadingRoomsFromServer
-                          ? const SizedBox()
-                          : displayedRooms.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        _totalItems == 0
-                                            ? 'Không có phòng'
-                                            : 'Không có phòng phù hợp với bộ lọc',
-                                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                                      ),
-                                      if (_totalItems > 0)
-                                        TextButton(
-                                          onPressed: _resetFilters,
-                                          child: const Text(
-                                            'Đặt lại bộ lọc',
-                                            style: TextStyle(color: Colors.blue, fontSize: 16),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.builder(
-                                  controller: _scrollController,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                  itemCount: displayedRooms.length,
-                                  itemBuilder: (context, index) {
-                                    final room = displayedRooms[index];
-                                    return RoomItemWidget(
-                                      room: room,
-                                      sanitize: sanitize,
-                                      onShowImages: () => _showImagesDialog(room.roomId),
-                                      onRegister: () => _registerForRoom(room),
-                                    );
-                                  },
-                                ),
-                    ),
-                    if (displayedRooms.isNotEmpty && !_isLoadingRoomsFromServer)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: PaginationControls(
-                          currentPage: _currentPage,
-                          totalItems: _totalItems,
-                          limit: _limit,
-                          onPageChanged: (page) {
-                            setState(() {
-                              _currentPage = page;
-                              _isLoadingRoomsFromServer = true;
-                              _saveCachedData(_allAreas);
-                            });
-                            _fetchRooms();
-                          },
+                            ),
+                          ],
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
+                      if (_isLoadingRoomsFromServer)
+                        const SizedBox(height: 300), // Placeholder for loading
+                      if (!_isLoadingRoomsFromServer && displayedRooms.isEmpty)
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                            padding: const EdgeInsets.all(28),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                NoSpellCheckText(
+                                  text: _totalItems == 0
+                                      ? 'Không có phòng'
+                                      : 'Không có phòng phù hợp với bộ lọc',
+                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 18, fontWeight: FontWeight.w600),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (_totalItems > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 12),
+                                    child: TextButton(
+                                      onPressed: _resetFilters,
+                                      style: TextButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.blue,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                      ),
+                                      child: const NoSpellCheckText(text: 'Đặt lại bộ lọc'),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (!_isLoadingRoomsFromServer && displayedRooms.isNotEmpty)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          itemCount: displayedRooms.length,
+                          itemBuilder: (context, index) {
+                            final room = displayedRooms[index];
+                            return RoomItemWidget(
+                              room: room,
+                              sanitize: sanitize,
+                              onShowImages: () => _showImagesDialog(room.roomId),
+                              onRegister: () => _registerForRoom(room),
+                            );
+                          },
+                        ),
+                      if (displayedRooms.isNotEmpty && !_isLoadingRoomsFromServer)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: PaginationControls(
+                            currentPage: _currentPage,
+                            totalItems: _totalItems,
+                            limit: _limit,
+                            onPageChanged: (page) {
+                              setState(() {
+                                _currentPage = page;
+                                _isLoadingRoomsFromServer = true;
+                                _saveCachedData(_allAreas);
+                              });
+                              _fetchRooms();
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
+          if (_isLoadingRoomsFromServer)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Card(
+                  color: Colors.white,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.blue),
+                        ),
+                        SizedBox(width: 16),
+                        NoSpellCheckText(text: 'Đang tải...', style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -24,28 +24,40 @@ class PaymentTransactionBloc extends Bloc<PaymentTransactionEvent, PaymentTransa
   Future<void> _onCreatePaymentTransaction(
       CreatePaymentTransactionEvent event, Emitter<PaymentTransactionState> emit) async {
     emit(PaymentTransactionLoading());
-    final result = await CreatePaymentTransaction(paymentTransactionRepository)(
-      billId: event.billId,
-      paymentMethod: event.paymentMethod,
-      returnUrl: event.returnUrl,
-    );
-    emit(result.fold(
-          (failure) {
-        if (failure is NetworkFailure) {
-          return PaymentTransactionError(message: 'Không có kết nối mạng: ${failure.message}');
-        }
-        if (failure is ServerFailure) {
-          if (failure.message.contains('Hóa đơn đã được thanh toán')) {
-            return PaymentTransactionError(message: 'Hóa đơn đã được thanh toán');
+    
+    // Log important info before making the API call
+    print("Creating payment transaction with billId: ${event.billId} (Type: ${event.billId.runtimeType})");
+    print("Payment method: ${event.paymentMethod}");
+    print("Return URL: ${event.returnUrl}");
+    
+    try {
+      final result = await CreatePaymentTransaction(paymentTransactionRepository)(
+        billId: event.billId,
+        paymentMethod: event.paymentMethod,
+        returnUrl: event.returnUrl,
+      );
+      emit(result.fold(
+            (failure) {
+          if (failure is NetworkFailure) {
+            return PaymentTransactionError(message: 'Không có kết nối mạng: ${failure.message}');
           }
-          if (failure.message.contains('Bạn không có quyền thanh toán hóa đơn này')) {
-            return PaymentTransactionError(message: 'Bạn không có quyền thanh toán hóa đơn này');
+          if (failure is ServerFailure) {
+            if (failure.message.contains('Hóa đơn đã được thanh toán')) {
+              return PaymentTransactionError(message: 'Hóa đơn đã được thanh toán');
+            }
+            if (failure.message.contains('Bạn không có quyền thanh toán hóa đơn này')) {
+              return PaymentTransactionError(message: 'Bạn không có quyền thanh toán hóa đơn này');
+            }
           }
-        }
-        return PaymentTransactionError(message: failure.message);
-      },
-          (transaction) => PaymentTransactionLoaded(selectedTransaction: transaction),
-    ));
+          return PaymentTransactionError(message: failure.message);
+        },
+            (transaction) => PaymentTransactionLoaded(selectedTransaction: transaction),
+      ));
+    } catch (e, stackTrace) {
+      print("Unexpected error in payment bloc: $e");
+      print("Stack trace: $stackTrace");
+      emit(PaymentTransactionError(message: 'Lỗi không xác định: $e'));
+    }
   }
 
   /// Xử lý sự kiện lấy chi tiết giao dịch thanh toán.
@@ -53,21 +65,30 @@ class PaymentTransactionBloc extends Bloc<PaymentTransactionEvent, PaymentTransa
   Future<void> _onGetPaymentTransactionById(
       GetPaymentTransactionByIdEvent event, Emitter<PaymentTransactionState> emit) async {
     emit(PaymentTransactionLoading());
-    final result = await GetPaymentTransactionById(paymentTransactionRepository)(
-      transactionId: event.transactionId,
-    );
-    emit(result.fold(
-          (failure) {
-        if (failure is NetworkFailure) {
-          return PaymentTransactionError(message: 'Không có kết nối mạng: ${failure.message}');
-        }
-        if (failure is ServerFailure && failure.message.contains('Transaction not found')) {
-          return PaymentTransactionEmpty(message: 'Không tìm thấy giao dịch');
-        }
-        return PaymentTransactionError(message: failure.message);
-      },
-          (transaction) => PaymentTransactionLoaded(selectedTransaction: transaction),
-    ));
+    
+    try {
+      print("Getting payment transaction with ID: ${event.transactionId} (Type: ${event.transactionId.runtimeType})");
+      
+      final result = await GetPaymentTransactionById(paymentTransactionRepository)(
+        transactionId: event.transactionId,
+      );
+      emit(result.fold(
+            (failure) {
+          if (failure is NetworkFailure) {
+            return PaymentTransactionError(message: 'Không có kết nối mạng: ${failure.message}');
+          }
+          if (failure is ServerFailure && failure.message.contains('Transaction not found')) {
+            return PaymentTransactionEmpty(message: 'Không tìm thấy giao dịch');
+          }
+          return PaymentTransactionError(message: failure.message);
+        },
+            (transaction) => PaymentTransactionLoaded(selectedTransaction: transaction),
+      ));
+    } catch (e, stackTrace) {
+      print("Unexpected error in payment bloc: $e");
+      print("Stack trace: $stackTrace");
+      emit(PaymentTransactionError(message: 'Lỗi không xác định: $e'));
+    }
   }
 
   /// Xử lý sự kiện callback thanh toán thành công.

@@ -105,6 +105,7 @@ class BillDetail extends Equatable {
   final String billMonth;
   final int? submittedBy;
   final String? submittedAt;
+  final Map<String, dynamic>? rateDetails; // Thêm rate_details
 
   const BillDetail({
     this.detailId,
@@ -116,6 +117,7 @@ class BillDetail extends Equatable {
     required this.billMonth,
     this.submittedBy,
     this.submittedAt,
+    this.rateDetails, // Thêm rate_details
   });
 
   factory BillDetail.fromJson(Map<String, dynamic> json) {
@@ -129,6 +131,7 @@ class BillDetail extends Equatable {
       billMonth: json['bill_month'] as String? ?? '',
       submittedBy: json['submitted_by'] as int?,
       submittedAt: json['submitted_at'] as String?,
+      rateDetails: json['rate_details'] as Map<String, dynamic>?,
     );
   }
 
@@ -143,6 +146,7 @@ class BillDetail extends Equatable {
       'bill_month': billMonth,
       'submitted_by': submittedBy,
       'submitted_at': submittedAt,
+      'rate_details': rateDetails,
     };
   }
 
@@ -157,5 +161,6 @@ class BillDetail extends Equatable {
     billMonth,
     submittedBy,
     submittedAt,
+    rateDetails,
   ];
 }

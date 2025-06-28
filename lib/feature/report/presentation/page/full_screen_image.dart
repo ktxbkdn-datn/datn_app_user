@@ -5,7 +5,7 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:http/http.dart' as http;
+import 'package:get/get.dart';
 
 class FullScreenMediaViewer extends StatefulWidget {
   final List<String> mediaUrls;
@@ -318,6 +318,7 @@ class _FullScreenMediaViewerState extends State<FullScreenMediaViewer> {
       body: SafeArea(
         child: Stack(
           children: [
+            // Main media view with PageView for swipe navigation
             PageView.builder(
               controller: _pageController,
               itemCount: widget.mediaUrls.length,
@@ -327,96 +328,165 @@ class _FullScreenMediaViewerState extends State<FullScreenMediaViewer> {
                 });
               },
               itemBuilder: (context, index) {
-                final mediaUrl = widget.mediaUrls[index];
-                return Center(
-                  child: _isVideo(mediaUrl)
-                      ? _chewieControllers[index] != null
-                          ? Chewie(
-                              controller: _chewieControllers[index]!,
-                            )
-                          : _isLoadingVideo
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.videocam_off,
-                                      color: Colors.white,
-                                      size: 50,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      _videoError ?? 'Không thể load video',
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: () => _retryLoadVideo(index),
-                                      child: const Text('Thử lại'),
-                                    ),
-                                  ],
-                                )
-                      : InteractiveViewer(
-                          panEnabled: true,
-                          minScale: 0.5,
-                          maxScale: 4.0,
-                          child: CachedNetworkImage(
-                            imageUrl: mediaUrl,
-                            fit: BoxFit.contain,
-                            placeholder: (context, url) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            errorWidget: (context, url, error) {
-                              debugPrint('Error loading full-screen image: $url, error: $error');
-                              return const Icon(
-                                Icons.error,
-                                color: Colors.white,
-                              );
+                final isVideo = _isVideo(widget.mediaUrls[index]);
+                if (isVideo) {
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: _chewieControllers[index] != null
+                            ? Chewie(controller: _chewieControllers[index]!)
+                            : _isLoadingVideo
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.videocam_off, color: Colors.white, size: 50),
+                                      const SizedBox(height: 16),
+                                      Text(_videoError ?? 'Không thể load video', style: const TextStyle(color: Colors.white)),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: () => _retryLoadVideo(index),
+                                        child: const Text('Thử lại'),
+                                      ),
+                                    ],
+                                  ),
+                      ),
+                      if (!_isLoadingVideo && _chewieControllers[index] != null)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              final chewie = _chewieControllers[index]!;
+                              final isPlaying = chewie.videoPlayerController.value.isPlaying;
+                              if (isPlaying) {
+                                chewie.videoPlayerController.pause();
+                              } else {
+                                chewie.videoPlayerController.play();
+                              }
+                              setState(() {});
                             },
+                            child: Container(
+                              color: Colors.black.withOpacity(0.18),
+                              child: Center(
+                                child: Icon(
+                                  _chewieControllers[index]!.videoPlayerController.value.isPlaying
+                                      ? Icons.pause_circle_filled
+                                      : Icons.play_circle_filled,
+                                  color: Colors.white,
+                                  size: 72,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                );
+                    ],
+                  );
+                } else {
+                  return InteractiveViewer(
+                    panEnabled: true,
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.mediaUrls[index],
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) {
+                        debugPrint('Error loading full-screen image: $url, error: $error');
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Get.snackbar(
+                            'Lỗi',
+                            'Không thể load ảnh',
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                            margin: const EdgeInsets.all(8),
+                            borderRadius: 8,
+                          );
+                        });
+                        return const Icon(Icons.error, color: Colors.white);
+                      },
+                    ),
+                  );
+                }
               },
             ),
+            // Close button
             Positioned(
-              top: 10,
-              right: 10,
+              top: 16,
+              right: 16,
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
                 onPressed: () => Navigator.pop(context),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black.withOpacity(0.4),
+                  shape: const CircleBorder(),
+                  padding: const EdgeInsets.all(8),
+                ),
               ),
             ),
+            // Counter (top left)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.mediaUrls.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            // Navigation arrows
             if (widget.mediaUrls.length > 1) ...[
               Positioned(
-                left: 10,
-                top: MediaQuery.of(context).size.height / 2 - 24,
+                left: 16,
+                top: MediaQuery.of(context).size.height / 2 - 32,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                  onPressed: _previousMedia,
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 32),
+                  onPressed: _currentIndex == 0 ? null : _previousMedia,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withOpacity(0.3),
+                    shape: const CircleBorder(),
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
               ),
               Positioned(
-                right: 10,
-                top: MediaQuery.of(context).size.height / 2 - 24,
+                right: 16,
+                top: MediaQuery.of(context).size.height / 2 - 32,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
-                  onPressed: _nextMedia,
+                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 32),
+                  onPressed: _currentIndex == widget.mediaUrls.length - 1 ? null : _nextMedia,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withOpacity(0.3),
+                    shape: const CircleBorder(),
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
               ),
+              // Indicators (bottom center)
               Positioned(
-                bottom: _isVideo(widget.mediaUrls[_currentIndex]) ? 60 : 20, // Adjust for video
+                bottom: _isVideo(widget.mediaUrls[_currentIndex]) ? 60 : 20,
                 left: 0,
                 right: 0,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(widget.mediaUrls.length, (index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      width: _currentIndex == index ? 12.0 : 8.0,
-                      height: _currentIndex == index ? 12.0 : 8.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                    return GestureDetector(
+                      onTap: () => _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                        width: _currentIndex == index ? 14.0 : 10.0,
+                        height: _currentIndex == index ? 14.0 : 10.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _currentIndex == index ? Colors.white : Colors.white.withOpacity(0.4),
+                        ),
                       ),
                     );
                   }),

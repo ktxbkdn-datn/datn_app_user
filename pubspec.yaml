@@ -45,6 +45,7 @@ dependencies:
   flutter_pdfview:
   cached_video_player_plus: ^3.0.3
   async:
+  dotted_border: ^3.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

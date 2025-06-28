@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 // Color Constants for the App
 class AppColors {
   // Glassmorphism Gradient Colors
-  static const Color glassmorphismStart = Colors.greenAccent; // Colors.blue.shade200
-  static const Color glassmorphismEnd = Colors.lightGreenAccent;   // Colors.pink.shade200
+  static final Color glassmorphismStart = Colors.purpleAccent; // Colors.blue.shade200
+  static final Color glassmorphismEnd = Colors.white;   // Colors.pink.shade200
 
   // Common UI Colors
   static const Color cardBackground = Colors.white;

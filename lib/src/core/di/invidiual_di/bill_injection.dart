@@ -4,6 +4,7 @@ import '../../../../feature/bill/data/datasource/bill_datasource.dart';
 import '../../../../feature/bill/data/repository/bill_repository_impl.dart' hide BillRemoteDataSource;
 import '../../../../feature/bill/domain/repository/bill_repository.dart';
 import '../../../../feature/bill/presentation/bloc/bill_bloc/bill_bloc.dart';
+import '../../../../feature/bill/domain/usecase/bill_usecases.dart';
 
 final getIt = GetIt.instance;
 
@@ -22,4 +23,9 @@ void registerBillDependencies() {
   getIt.registerFactory<BillBloc>(() => BillBloc(
     billRepository: getIt<BillRepository>(),
   ));
+
+  // Đăng ký Usecase
+  getIt.registerSingleton<GetRoomBillDetails>(
+    GetRoomBillDetails(getIt<BillRepository>()),
+  );
 }

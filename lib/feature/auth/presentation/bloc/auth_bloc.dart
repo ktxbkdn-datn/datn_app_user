@@ -198,14 +198,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onUpdateUserProfile(UpdateUserProfileEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
+    
+    // Date of birth should already be in the correct format (dd-MM-yyyy) from edit_profile.dart
+    // No need to format it again here, just pass it directly to the data source
+    
     final result = await updateUserProfile(
-      email: event.email,
+      // Email isn't updatable in the backend /me endpoint
+      // email: event.email,
       fullname: event.fullname,
       phone: event.phone,
       cccd: event.cccd,
-      dateOfBirth: event.dateOfBirth,
+      dateOfBirth: event.dateOfBirth,  // Already in dd-MM-yyyy format
       className: event.className,
+      studentCode: event.studentCode,
+      hometown: event.hometown,
     );
+    
     result.fold(
       (failure) {
         emit(AuthError(message: _getUserFriendlyErrorMessage(failure.message)));
@@ -213,6 +221,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       (user) {
         _userCache = user;
         emit(UserProfileUpdated(user: user));
+        
+        // Lấy dữ liệu mới nhất sau khi cập nhật để đảm bảo UI hiển thị đúng
+        add(GetUserProfileEvent());
       },
     );
   }

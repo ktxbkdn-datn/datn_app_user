@@ -48,3 +48,21 @@ class GetMyBills {
     );
   }
 }
+
+class GetRoomBillDetails {
+  final BillRepository repository;
+
+  GetRoomBillDetails(this.repository);
+
+  Future<Either<Failure, List<BillDetail>>> call({
+    required int roomId,
+    required int year,
+    required int serviceId, // thêm serviceId
+  }) async {
+    return await repository.getRoomBillDetails(
+      roomId: roomId,
+      year: year,
+      serviceId: serviceId, // truyền serviceId
+    );
+  }
+}

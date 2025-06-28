@@ -81,3 +81,4 @@ class BillError extends BillState {
   @override
   List<Object> get props => [message];
 }
+

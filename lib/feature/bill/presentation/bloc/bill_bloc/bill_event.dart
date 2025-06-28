@@ -50,3 +50,18 @@ class ResetBillStateEvent extends BillEvent {
   @override
   List<Object?> get props => [];
 }
+
+class GetRoomBillDetailsEvent extends BillEvent {
+  final int roomId;
+  final int year;
+  final int serviceId; // thêm serviceId
+
+  const GetRoomBillDetailsEvent({
+    required this.roomId,
+    required this.year,
+    required this.serviceId, // thêm serviceId
+  });
+
+  @override
+  List<Object?> get props => [roomId, year, serviceId];
+}

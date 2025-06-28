@@ -13,6 +13,8 @@ class UserEntity extends Equatable {
   final bool isDeleted;
   final String? deletedAt;
   final int? version;
+  final String? studentCode;
+  final String? hometown;
 
   const UserEntity({
     required this.userId,
@@ -27,6 +29,8 @@ class UserEntity extends Equatable {
     required this.isDeleted,
     this.deletedAt,
     required this.version,
+    this.studentCode,
+    this.hometown,
   });
 
   factory UserEntity.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,8 @@ class UserEntity extends Equatable {
       isDeleted: json['is_deleted'] as bool? ?? false,
       deletedAt: json['deleted_at'] as String?,
       version: json['version'] as int?,
+      studentCode: json['student_code'] as String?,
+      hometown: json['hometown'] as String?,
     );
   }
 
@@ -60,6 +66,8 @@ class UserEntity extends Equatable {
       'is_deleted': isDeleted,
       'deleted_at': deletedAt,
       'version': version,
+      'student_code': studentCode,
+      'hometown': hometown,
     };
   }
 
@@ -77,5 +85,7 @@ class UserEntity extends Equatable {
     isDeleted,
     deletedAt,
     version,
+    studentCode,
+    hometown,
   ];
 }

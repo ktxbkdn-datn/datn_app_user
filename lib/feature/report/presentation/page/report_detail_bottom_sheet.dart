@@ -64,27 +64,10 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
             (type) => type.reportTypeId == reportTypeId,
         orElse: () => ReportTypeEntity(reportTypeId: 0, name: 'Không xác định'),
       );
-      return reportType.name ?? 'Không xác định';
+      return reportType.name;
     } catch (e) {
       debugPrint('Error in _getReportTypeName: $e');
       return 'Không xác định';
-    }
-  }
-
-  String _translateStatus(String status) {
-    switch (status) {
-      case 'PENDING':
-        return 'Đang chờ xử lý';
-      case 'RECEIVED':
-        return 'Đã tiếp nhận';
-      case 'IN_PROGRESS':
-        return 'Đang xử lý';
-      case 'RESOLVED':
-        return 'Đã giải quyết';
-      case 'CLOSED':
-        return 'Đã đóng';
-      default:
-        return status;
     }
   }
 
@@ -135,6 +118,7 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
     );
   }
 
+  // --- Glassmorphism, modern, consistent with React/Next.js design ---
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ReportBloc, ReportState>(
@@ -210,134 +194,150 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
       },
       builder: (context, state) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.8,
+          initialChildSize: 0.85,
           minChildSize: 0.5,
-          maxChildSize: 0.9,
+          maxChildSize: 0.95,
           builder: (context, scrollController) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                // Đổi sang nền trắng hoặc trắng mờ nhẹ, không blur
+                color: Colors.white.withOpacity(0.92),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+                // XÓA: backgroundBlendMode và mọi hiệu ứng blur
               ),
               child: Stack(
                 children: [
                   SingleChildScrollView(
                     controller: scrollController,
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Chi tiết báo cáo",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                          // Header with icon and title
+                          Row(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.all(8),
+                                child: const Icon(Icons.description, color: Color(0xFF3B82F6), size: 26),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Chi tiết báo cáo",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              // Spacer(),
+                              const SizedBox(width: 8),
+                              // Status badge
+                              _StatusBadge(status: widget.report.status, translate: _translateStatus),
+                            ],
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 28),
+                          // Card container
                           Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 16.0), // Thêm margin cố định
-                            padding: const EdgeInsets.all(16.0),
+                            margin: const EdgeInsets.only(bottom: 12.0),
+                            padding: const EdgeInsets.all(22.0),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white.withOpacity(0.85),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  "Loại báo cáo",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
+                                _FieldLabel(label: "Loại báo cáo"),
+                                const SizedBox(height: 6),
                                 Text(
                                   _getReportTypeName(widget.report.reportTypeId, widget.reportTypes),
                                   style: const TextStyle(
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: Color(0xFF1E293B),
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  "Tiêu đề báo cáo",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 18),
+                                _FieldLabel(label: "Tiêu đề báo cáo"),
+                                const SizedBox(height: 6),
                                 Text(
                                   widget.report.title,
                                   style: const TextStyle(
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: Color(0xFF1E293B),
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  "Nội dung báo cáo",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 18),
+                                _FieldLabel(label: "Nội dung báo cáo"),
+                                const SizedBox(height: 6),
                                 Text(
                                   widget.report.description ?? 'Không có nội dung',
                                   style: const TextStyle(
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: Color(0xFF1E293B),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  "Trạng thái",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _translateStatus(widget.report.status),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black87,
-                                  ),
+                                const SizedBox(height: 18),
+                                _FieldLabel(label: "Trạng thái"),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    _StatusBadge(status: widget.report.status, translate: _translateStatus),
+                                  ],
                                 ),
                                 const SizedBox(height: 24),
-                                const Text(
-                                  "Hình ảnh liên quan",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
+                                _FieldLabel(label: "Hình ảnh liên quan"),
                                 const SizedBox(height: 8),
                                 if (isLoading)
                                   const Center(child: CircularProgressIndicator())
                                 else if (errorMessage != null)
-                                  Text(
-                                    "Lỗi: $errorMessage",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.red,
-                                    ),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Lỗi khi tải hình ảnh',
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                        size: 50,
+                                      )
+                                    ],
                                   )
                                 else if (reportImages.isNotEmpty)
                                   GridView.builder(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
                                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 1,
-                                      crossAxisSpacing: 8,
-                                      mainAxisSpacing: 8,
-                                      childAspectRatio: 16 / 9,
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 1,
                                     ),
                                     itemCount: reportImages.length,
                                     itemBuilder: (context, index) {
@@ -348,72 +348,121 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
                                           final fullMediaUrls = reportImages.map((img) => _buildMediaUrl(img.imageUrl)).toList();
                                           _showFullScreenMedia(context, fullMediaUrls, index, widget.report.reportId);
                                         },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: image.fileType == 'video'
-                                              ? (chewieControllers[index] == null)
-                                                  ? const Icon(
-                                                      Icons.videocam,
-                                                      size: 50,
-                                                      color: Colors.grey,
-                                                    )
-                                                  : Stack(
-                                                      children: [
-                                                        Chewie(
-                                                          controller: chewieControllers[index]!,
-                                                        ),
-                                                        Positioned(
-                                                          bottom: 8,
-                                                          left: 8,
-                                                          right: 8,
-                                                          child: Row(
-                                                            mainAxisAlignment: MainAxisAlignment.center,
-                                                            children: [
-                                                              IconButton(
-                                                                icon: Icon(
-                                                                  chewieControllers[index]!.videoPlayerController.value.isPlaying
-                                                                      ? Icons.pause
-                                                                      : Icons.play_arrow,
-                                                                  color: Colors.white,
-                                                                  size: 30,
-                                                                ),
-                                                                onPressed: () {
-                                                                  setState(() {
-                                                                    if (chewieControllers[index]!.videoPlayerController.value.isPlaying) {
-                                                                      chewieControllers[index]!.pause();
-                                                                    } else {
-                                                                      chewieControllers[index]!.play();
-                                                                    }
-                                                                  });
-                                                                },
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    )
-                                              : CachedNetworkImage(
-                                                  imageUrl: mediaUrl,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) => const Center(
-                                                    child: CircularProgressIndicator(),
+                                        child: Stack(
+                                          children: [
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(12),
+                                                color: Colors.grey[100],
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.04),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
                                                   ),
-                                                  errorWidget: (context, url, error) {
-                                                    debugPrint('Failed to load image: $url, error: $error');
-                                                    return const Icon(
-                                                      Icons.broken_image,
-                                                      size: 50,
-                                                      color: Colors.grey,
-                                                    );
-                                                  },
+                                                ],
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: image.fileType == 'video'
+                                                    ? (chewieControllers[index] == null)
+                                                        ? const Center(
+                                                            child: Icon(
+                                                              Icons.videocam,
+                                                              size: 48,
+                                                              color: Colors.grey,
+                                                            ),
+                                                          )
+                                                        : Chewie(
+                                                            controller: chewieControllers[index]!,
+                                                          )
+                                                    : CachedNetworkImage(
+                                                        imageUrl: mediaUrl,
+                                                        fit: BoxFit.cover,
+                                                        placeholder: (context, url) => const Center(
+                                                          child: CircularProgressIndicator(),
+                                                        ),
+                                                        errorWidget: (context, url, error) {
+                                                          debugPrint('Failed to load image: $url, error: $error');
+                                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                            Get.snackbar(
+                                                              'Lỗi',
+                                                              'Ảnh không tồn tại hoặc có lỗi',
+                                                              snackPosition: SnackPosition.TOP,
+                                                              backgroundColor: Colors.red,
+                                                              colorText: Colors.white,
+                                                              margin: const EdgeInsets.all(8),
+                                                              borderRadius: 8,
+                                                            );
+                                                          });
+                                                          return const Icon(
+                                                            Icons.broken_image,
+                                                            size: 48,
+                                                            color: Colors.grey,
+                                                          );
+                                                        },
+                                                      ),
+                                              ),
+                                            ),
+                                            // Overlay icon
+                                            Positioned.fill(
+                                              child: AnimatedOpacity(
+                                                opacity: 0.0,
+                                                duration: const Duration(milliseconds: 200),
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.18),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Center(
+                                                    child: Icon(
+                                                      image.fileType == 'video' ? Icons.videocam : Icons.image,
+                                                      color: Colors.white,
+                                                      size: 32,
+                                                    ),
+                                                  ),
                                                 ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       );
                                     },
+                                  )
+                                else
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.image_not_supported, color: Colors.grey, size: 32),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Không có hình ảnh đính kèm',
+                                          style: TextStyle(color: Colors.grey, fontSize: 15),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 const SizedBox(height: 24),
+                                // Dates
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Tạo:  ' + (widget.report.createdAt != null ? _formatDate(widget.report.createdAt) : '-'),
+                                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        'Cập nhật:  ' + (widget.report.updatedAt != null ? _formatDate(widget.report.updatedAt) : '-'),
+                                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                        textAlign: TextAlign.end,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -421,9 +470,10 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
                       ),
                     ),
                   ),
+                  // Close button
                   Positioned(
-                    top: 16,
-                    right: 16,
+                    top: 18,
+                    right: 18,
                     child: IconButton(
                       color: Colors.grey[600],
                       icon: const Icon(
@@ -441,5 +491,115 @@ class _ReportDetailBottomSheetState extends State<ReportDetailBottomSheet> {
         );
       },
     );
+  }
+}
+
+// Helper widgets for badge and field label
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  final String Function(String) translate;
+  const _StatusBadge({required this.status, required this.translate});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    IconData icon;
+    switch (status) {
+      case 'PENDING':
+        bg = const Color(0xFFFFF7D6);
+        fg = const Color(0xFFB45309);
+        icon = Icons.access_time_rounded;
+        break;
+      case 'RECEIVED':
+        bg = const Color(0xFFD1E9FF);
+        fg = const Color(0xFF2563EB);
+        icon = Icons.mark_email_read_rounded;
+        break;
+      case 'IN_PROGRESS':
+        bg = const Color(0xFFFFEDD5);
+        fg = const Color(0xFFEA580C);
+        icon = Icons.play_circle_fill_rounded;
+        break;
+      case 'RESOLVED':
+        bg = const Color(0xFFD1FADF);
+        fg = const Color(0xFF059669);
+        icon = Icons.check_circle_rounded;
+        break;
+      case 'CLOSED':
+        bg = const Color(0xFFF1F5F9);
+        fg = const Color(0xFF64748B);
+        icon = Icons.cancel_rounded;
+        break;
+      default:
+        bg = const Color(0xFFF1F5F9);
+        fg = const Color(0xFF64748B);
+        icon = Icons.info_outline_rounded;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: fg, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            translate(status),
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel({required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 15,
+        color: Color(0xFF64748B),
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+}
+
+String _translateStatus(String status) {
+  switch (status) {
+    case 'PENDING':
+      return 'Chờ xử lý';
+    case 'RECEIVED':
+      return 'Đã tiếp nhận';
+    case 'IN_PROGRESS':
+      return 'Đang xử lý';
+    case 'RESOLVED':
+      return 'Đã xử lý';
+    case 'CLOSED':
+      return 'Đã đóng';
+    default:
+      return 'Không xác định';
+  }
+}
+
+String _formatDate(String? dateStr) {
+  if (dateStr == null) return '-';
+  try {
+    final date = DateTime.parse(dateStr);
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return '-';
   }
 }

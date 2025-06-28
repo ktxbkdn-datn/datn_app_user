@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../common/widgets/no_spell_check_text.dart';
 
 class ExpandableDescription extends StatefulWidget {
   final String text;
@@ -15,25 +16,39 @@ class _ExpandableDescriptionState extends State<ExpandableDescription> {
 
   @override
   Widget build(BuildContext context) {
+    final showButton = widget.text.length > 150;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.text,
+        NoSpellCheckText(
+          text: widget.text,
           maxLines: isExpanded ? null : widget.maxLines,
-          overflow: TextOverflow.ellipsis,
-        ),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              isExpanded = !isExpanded;
-            });
-          },
-          child: Text(
-            isExpanded ? "Xem thêm" : "Thu gọn",
-            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+          overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF374151),
+            height: 1.6,
+            fontSize: 15,
           ),
         ),
+        if (showButton)
+          TextButton(
+            onPressed: () {
+              setState(() {
+                isExpanded = !isExpanded;
+              });
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              foregroundColor: Colors.blue[700],
+              textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
+            child: NoSpellCheckText(
+              text: isExpanded ? "Thu gọn" : "Xem thêm",
+            ),
+          ),
       ],
     );
   }

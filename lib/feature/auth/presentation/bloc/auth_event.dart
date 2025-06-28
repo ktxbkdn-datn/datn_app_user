@@ -88,6 +88,8 @@ class UpdateUserProfileEvent extends AuthEvent {
   final String? cccd;
   final String? dateOfBirth;
   final String? className;
+  final String? studentCode; // thêm
+  final String? hometown;    // thêm
 
   const UpdateUserProfileEvent({
     this.email,
@@ -96,10 +98,12 @@ class UpdateUserProfileEvent extends AuthEvent {
     this.cccd,
     this.dateOfBirth,
     this.className,
+    this.studentCode, // thêm
+    this.hometown,    // thêm
   });
 
   @override
-  List<Object?> get props => [email, fullname, phone, cccd, dateOfBirth, className];
+  List<Object?> get props => [email, fullname, phone, cccd, dateOfBirth, className, studentCode, hometown];
 }
 
 class UpdateAvatarEvent extends AuthEvent {

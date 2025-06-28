@@ -146,9 +146,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                         ),
                                       );
                                     },
-                                    buttonColor: Colors.lightGreenAccent,
-                                    nameButton: 'Gửi mã xác nhận',
-                                    textColor: Colors.black,
+                                    buttonColor: Colors.lightBlueAccent,
+                                    nameButton: 'Nhận mã xác nhận',
+                                    textColor: Colors.black87,
                                     borderSideColor: Colors.white,
                                   ),
                                 ),

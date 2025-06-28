@@ -185,9 +185,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                         ),
                                       );
                                     },
-                                    buttonColor: Colors.lightGreenAccent,
+                                    buttonColor: Colors.lightBlueAccent,
                                     nameButton: 'Đặt lại mật khẩu',
-                                    textColor: Colors.black,
+                                    textColor: Colors.black87,
                                     borderSideColor: Colors.white,
                                   ),
                                 ),

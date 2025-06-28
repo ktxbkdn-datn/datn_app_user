@@ -3,6 +3,8 @@ import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../../src/core/error/failures.dart';
@@ -41,6 +43,8 @@ abstract class AuthRemoteDataSource {
     String? cccd,
     String? dateOfBirth,
     String? className,
+    String? studentCode, // thêm
+    String? hometown,    // thêm
   });
 
   Future<Either<Failure, UserModel>> updateAvatar({
@@ -166,20 +170,93 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? cccd,
     String? dateOfBirth,
     String? className,
+    String? studentCode,
+    String? hometown,
   }) async {
     try {
       final body = <String, dynamic>{};
-      if (email != null) body['email'] = email;
-      if (fullname != null) body['fullname'] = fullname;
-      if (phone != null) body['phone'] = phone;
-      if (cccd != null) body['CCCD'] = cccd;
-      if (dateOfBirth != null) body['date_of_birth'] = dateOfBirth;
-      if (className != null) body['class_name'] = className;
-
-      final response = await apiService.put('/me', body);
-      final user = UserModel.fromJson(response);
-      return Right(user);
+      
+      // Chỉ thêm các trường thực sự cần cập nhật để tránh gửi dữ liệu không cần thiết
+      // Backend hiện không hỗ trợ cập nhật email thông qua /me endpoint
+      if (fullname != null && fullname.trim().isNotEmpty) body['fullname'] = fullname.trim();
+      if (phone != null) body['phone'] = phone.trim();
+      if (cccd != null) body['CCCD'] = cccd.trim();
+      if (studentCode != null) body['student_code'] = studentCode.trim();
+      if (hometown != null) body['hometown'] = hometown.trim();
+      if (className != null && className.trim().isNotEmpty) body['class_name'] = className.trim();
+      
+      // Xử lý ngày sinh đặc biệt - API backend mong đợi định dạng dd-MM-yyyy
+      if (dateOfBirth != null && dateOfBirth.trim().isNotEmpty) {
+        try {
+          final trimmedDate = dateOfBirth.trim();
+          
+          // Nếu là định dạng yyyy-MM-dd, chuyển sang dd-MM-yyyy
+          if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmedDate)) {
+            final date = DateFormat('yyyy-MM-dd').parse(trimmedDate);
+            body['date_of_birth'] = DateFormat('dd-MM-yyyy').format(date);
+            debugPrint('Date converted from $trimmedDate to ${body['date_of_birth']}');
+          } 
+          // Nếu đã là định dạng dd-MM-yyyy, giữ nguyên
+          else if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(trimmedDate)) {
+            body['date_of_birth'] = trimmedDate;
+            debugPrint('Date already in correct format: $trimmedDate');
+          } 
+          // Thử phân tích định dạng khác
+          else {
+            final date = DateTime.parse(trimmedDate);
+            body['date_of_birth'] = DateFormat('dd-MM-yyyy').format(date);
+            debugPrint('Date parsed and converted to: ${body['date_of_birth']}');
+          }
+        } catch (e) {
+          debugPrint('Error formatting date: $e');
+          return Left(ServerFailure('Định dạng ngày sinh không hợp lệ: $dateOfBirth'));
+        }
+      }
+      
+      // Log để debug
+      debugPrint('PUT /me request payload: $body');
+      
+      // Kiểm tra body trống
+      if (body.isEmpty) {
+        return Left(ServerFailure('Không có thông tin nào để cập nhật'));
+      }
+      
+      try {
+        // Gửi yêu cầu PUT đến API
+        final response = await apiService.put('/me', body);
+        
+        // Log chi tiết phản hồi
+        debugPrint('PUT /me response: $response');
+        
+        // Phân tích phản hồi
+        final user = UserModel.fromJson(response);
+        
+        // Sau khi cập nhật thành công, lấy lại thông tin mới từ API
+        try {
+          final currentProfileResponse = await apiService.get('/me');
+          debugPrint('GET /me after update response: $currentProfileResponse');
+          final currentUser = UserModel.fromJson(currentProfileResponse);
+          debugPrint('Updated user profile: ${currentUser.toString()}');
+          return Right(currentUser);
+        } catch (fallbackError) {
+          debugPrint('Failed to get updated profile: $fallbackError');
+          // Vẫn trả về user từ response PUT nếu không lấy được thông tin mới
+          return Right(user);
+        }
+      } catch (apiError) {
+        debugPrint('API error when updating profile: $apiError');
+        
+        // Hiển thị lỗi từ server một cách chi tiết hơn
+        if (apiError.toString().contains("500")) {
+          return Left(ServerFailure('Lỗi server khi cập nhật hồ sơ. Vui lòng thử lại sau hoặc liên hệ admin.'));
+        }
+        
+        // KHÔNG lấy hồ sơ hiện tại để trả về nếu cập nhật thất bại
+        // Thay vào đó, trả về lỗi để thông báo cho người dùng
+        return Left(_handleError(apiError));
+      }
     } catch (e) {
+      debugPrint('PUT /me error: $e');
       return Left(_handleError(e));
     }
   }

@@ -45,5 +45,23 @@ class BillRepositoryImpl implements BillRepository {
       final totalItems = data.$2;
       return (bills, totalItems);
     });
+  }   @override
+  Future<Either<Failure, List<BillDetail>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId, // thêm serviceId
+  }) async {
+    print('\n=== BILL REPOSITORY: GET ROOM BILL DETAILS ===');
+    print('Calling remoteDataSource.getRoomBillDetails with:');
+    print('roomId: $roomId');
+    print('year: $year');
+    print('serviceId: $serviceId');
+    
+    final result = await remoteDataSource.getRoomBillDetails(
+      roomId: roomId,
+      year: year,
+      serviceId: serviceId, // truyền serviceId
+    );
+    return result.map((models) => models.map((model) => model.toEntity()).toList());
   }
 }

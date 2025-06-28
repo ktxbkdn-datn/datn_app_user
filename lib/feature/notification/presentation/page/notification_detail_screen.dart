@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:chewie/chewie.dart';
 import 'package:datn_app/feature/notification/presentation/widget/full_screen_media_widget.dart';
+import 'package:datn_app/common/components/app_background.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +13,9 @@ import 'package:intl/intl.dart';
 
 import '../../../../common/constant/api_constant.dart';
 import '../../../../common/constant/colors.dart';
+import '../../../../common/utils/responsive_utils.dart';
+import '../../../../common/utils/responsive_widget_extension.dart';
+import '../../../../common/widgets/responsive_scaffold.dart';
 import '../bloc/notification_bloc.dart';
 import '../bloc/notification_event.dart';
 import '../bloc/notification_state.dart';
@@ -182,261 +187,353 @@ class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final formattedTimestamp = _formatTimestamp(widget.timestamp);
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Glassmorphism background elements
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFE0F2FE), // blue-50
+                      Color(0xFFE0E7FF), // indigo-50
+                      Color(0xFFF3E8FF), // purple-50
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: Row(
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.withOpacity(0.18), Colors.purple.withOpacity(0.12)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.purple.withOpacity(0.18), Colors.pink.withOpacity(0.12)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(ResponsiveUtils.wp(context, 4)),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: ResponsiveUtils.isTablet(context) ? 700 : 600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
+                        // Header Card
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          color: Colors.white.withOpacity(0.7),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: ResponsiveUtils.wp(context, 4),
+                              vertical: ResponsiveUtils.hp(context, 1.8)
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_back, 
+                                    color: Colors.black87, 
+                                    size: ResponsiveUtils.sp(context, 22)
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                SizedBox(width: ResponsiveUtils.wp(context, 3)),
+                                Text(
+                                  "Chi tiết thông báo",
+                                  style: TextStyle(
+                                    fontSize: ResponsiveUtils.sp(context, 18),
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        Expanded(
-                          child: Text(
-                            "Chi tiết thông báo",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              shadows: [Shadow(color: Colors.black26, blurRadius: 4)],
+                        SizedBox(height: ResponsiveUtils.hp(context, 2.5)),
+                        // Content Card
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          color: Colors.white.withOpacity(0.8),
+                          child: Padding(
+                            padding: EdgeInsets.all(ResponsiveUtils.wp(context, 6)),
+                            child: BlocConsumer<NotificationBloc, NotificationState>(
+                              listener: (context, state) {
+                                if (state is NotificationError) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Lỗi: ${state.message}')),
+                                  );
+                                } else if (state is NotificationMediaLoaded) {
+                                  setState(() {
+                                    mediaItems = state.media
+                                        .map((media) => {
+                                              'media_url': media.mediaUrl,
+                                              'file_type': media.fileType,
+                                              'filename': media.mediaUrl.split('/').last,
+                                            })
+                                        .toList();
+                                    _buildMediaItems();
+                                  });
+                                }
+                              },
+                              builder: (context, state) {
+                                final isLoading = state is NotificationLoading;
+                                return isLoading
+                                    ? Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(vertical: ResponsiveUtils.hp(context, 5)),
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      )
+                                    : Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Media Gallery
+                                          if (nonDocumentMediaItems.isNotEmpty) ...[
+                                            Container(
+                                              margin: const EdgeInsets.only(bottom: 24),
+                                              child: Stack(
+                                                children: [
+                                                  AspectRatio(
+                                                    aspectRatio: 16 / 9,
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(16),
+                                                      child: PageView.builder(
+                                                        controller: _mediaPageController,
+                                                        itemCount: nonDocumentMediaItems.length,
+                                                        onPageChanged: (index) {
+                                                          setState(() {
+                                                            _currentPageIndex = index;
+                                                          });
+                                                        },
+                                                        itemBuilder: (context, index) {
+                                                          final media = nonDocumentMediaItems[index];
+                                                          final url = _buildMediaUrl(media['media_url'] as String);
+                                                          return GestureDetector(
+                                                            onTap: () => _showFullScreenMedia(context, index),
+                                                            child: media['file_type'] == 'video'
+                                                                ? Container(
+                                                                    color: Colors.grey[200],
+                                                                    child: Center(
+                                                                      child: Icon(Icons.videocam, size: 60, color: Colors.grey[500]),
+                                                                    ),
+                                                                  )
+                                                                : CachedNetworkImage(
+                                                                    imageUrl: url,
+                                                                    fit: BoxFit.cover,
+                                                                    httpHeaders: authToken != null
+                                                                        ? {'Authorization': 'Bearer $authToken'}
+                                                                        : {},
+                                                                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                                                    errorWidget: (context, url, error) => const Center(child: Icon(Icons.error)),
+                                                                  ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (nonDocumentMediaItems.length > 1) ...[
+                                                    Positioned(
+                                                      left: 8,
+                                                      top: 0,
+                                                      bottom: 0,
+                                                      child: IconButton(
+                                                        icon: const Icon(Icons.chevron_left, color: Colors.black54, size: 32),
+                                                        onPressed: _scrollToPreviousMedia,
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      right: 8,
+                                                      top: 0,
+                                                      bottom: 0,
+                                                      child: IconButton(
+                                                        icon: const Icon(Icons.chevron_right, color: Colors.black54, size: 32),
+                                                        onPressed: _scrollToNextMedia,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                  if (nonDocumentMediaItems.length > 1)
+                                                    Positioned(
+                                                      bottom: 12,
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.black.withOpacity(0.3),
+                                                            borderRadius: BorderRadius.circular(20),
+                                                          ),
+                                                          child: Text(
+                                                            '${_currentPageIndex + 1} / ${nonDocumentMediaItems.length}',
+                                                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                          // Document Media
+                                          if (documentMediaItems.isNotEmpty) ...[
+                                            Padding(
+                                              padding: const EdgeInsets.only(bottom: 12),
+                                              child: Text(
+                                                'Tài liệu',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.grey[800],
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: 110,
+                                              child: ListView.builder(
+                                                scrollDirection: Axis.horizontal,
+                                                itemCount: documentMediaItems.length,
+                                                itemBuilder: (context, index) {
+                                                  final doc = documentMediaItems[index];
+                                                  return GestureDetector(
+                                                    onTap: () => _showFullScreenMedia(context, nonDocumentMediaItems.length + index),
+                                                    child: Container(
+                                                      width: 80,
+                                                      margin: const EdgeInsets.only(right: 12),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[100],
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        border: Border.all(color: Colors.grey[300]!),
+                                                      ),
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          Icon(
+                                                            doc['filename'].toString().toLowerCase().endsWith('.pdf')
+                                                                ? Icons.picture_as_pdf
+                                                                : Icons.insert_drive_file,
+                                                            size: 32,
+                                                            color: doc['filename'].toString().toLowerCase().endsWith('.pdf')
+                                                                ? Colors.red
+                                                                : Colors.blue,
+                                                          ),
+                                                          const SizedBox(height: 8),
+                                                          Padding(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                                            child: Text(
+                                                              doc['filename'],
+                                                              style: const TextStyle(fontSize: 11, color: Colors.black87),
+                                                              textAlign: TextAlign.center,
+                                                              maxLines: 2,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                          // Notification Content
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 16, bottom: 8),
+                                            child: Text(
+                                              widget.title,
+                                              style: const TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                formattedTimestamp,
+                                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            widget.message,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              color: Colors.black87,
+                                              height: 1.6,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                              },
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: BlocConsumer<NotificationBloc, NotificationState>(
-                        listener: (context, state) {
-                          if (state is NotificationError) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: ${state.message}')),
-                            );
-                          } else if (state is NotificationMediaLoaded) {
-                            setState(() {
-                              mediaItems = state.media
-                                  .map((media) => ({
-                                        'media_url': media.mediaUrl,
-                                        'file_type': media.fileType ?? 'image',
-                                        'filename': media.mediaUrl.split('/').last,
-                                      }))
-                                  .toList();
-                              print('Loaded media items: $mediaItems');
-                              _buildMediaItems();
-                            });
-                          }
-                        },
-                        builder: (context, state) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (nonDocumentMediaItems.isNotEmpty) ...[
-                                Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    SizedBox(
-                                      height: 350,
-                                      child: PageView.builder(
-                                        controller: _mediaPageController,
-                                        itemCount: nonDocumentMediaItems.length,
-                                        onPageChanged: (index) {
-                                          setState(() {
-                                            _currentPageIndex = index;
-                                          });
-                                        },
-                                        itemBuilder: (context, index) {
-                                          final media = nonDocumentMediaItems[index];
-                                          final url = _buildMediaUrl(media['media_url'] as String);
-                                          return Center(
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                _showFullScreenMedia(context, index);
-                                              },
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: Container(
-                                                  width: 350,
-                                                  height: 350,
-                                                  child: _isVideo(url)
-                                                      ? FutureBuilder<ChewieController?>(
-                                                          future: _getChewieController(url),
-                                                          builder: (context, snapshot) {
-                                                            if (snapshot.connectionState == ConnectionState.waiting) {
-                                                              return const Center(child: CircularProgressIndicator());
-                                                            }
-                                                            if (snapshot.hasError || !snapshot.hasData) {
-                                                              return const Icon(Icons.videocam, size: 40, color: Colors.grey);
-                                                            }
-                                                            return ClipRect(
-                                                              child: Chewie(controller: snapshot.data!),
-                                                            );
-                                                          },
-                                                        )
-                                                      : CachedNetworkImage(
-                                                          imageUrl: url,
-                                                          fit: BoxFit.cover,
-                                                          httpHeaders: authToken != null
-                                                              ? {'Authorization': 'Bearer $authToken'}
-                                                              : {},
-                                                          placeholder: (context, url) =>
-                                                              const Center(child: CircularProgressIndicator()),
-                                                          errorWidget: (context, url, error) {
-                                                            return const Icon(Icons.error);
-                                                          },
-                                                        ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    if (kIsWeb && nonDocumentMediaItems.length > 1) ...[
-                                      Positioned(
-                                        left: 0,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 30),
-                                          onPressed: _scrollToPreviousMedia,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        right: 0,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.arrow_forward_ios, color: Colors.black, size: 30),
-                                          onPressed: _scrollToNextMedia,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              if (documentMediaItems.isNotEmpty) ...[
-                                const Text(
-                                  'Documents',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  height: 100,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: documentMediaItems.length,
-                                    itemBuilder: (context, index) {
-                                      final doc = documentMediaItems[index];
-                                      print('Document item $index: $doc');
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 8.0),
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            final docIndex = mediaItems.indexOf(doc);
-                                            print('Opening document at index: $docIndex');
-                                            _showFullScreenMedia(context, docIndex);
-                                          },
-                                          child: Container(
-                                            width: 100,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[200],
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  doc['media_url'].toLowerCase().endsWith('.pdf')
-                                                      ? Icons.picture_as_pdf
-                                                      : Icons.description,
-                                                  size: 40,
-                                                  color: Colors.grey[600],
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  doc['filename'] as String,
-                                                  style: TextStyle(fontSize: 12),
-                                                  textAlign: TextAlign.center,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              Text(
-                                widget.title,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                formattedTimestamp,
-                                style: const TextStyle(
-                                  fontSize: 14 ,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                widget.message,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black87,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

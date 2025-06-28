@@ -30,10 +30,24 @@ class NotificationModel extends Equatable {
     this.media,
     this.notificationType,
     required this.isRead,
-  });
-
-  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+  });  factory NotificationModel.fromJson(Map<String, dynamic> json) {    
     print('Parsing NotificationModel: $json');
+    // Fix for API inconsistency - personal_notifications with isRead=true are actually read
+    // So in our model, they should also be marked as isRead=true
+    final dynamic isReadRaw = json['is_read'] ?? json['isRead'];
+    bool isReadValue = false;
+    
+    if (isReadRaw is bool) {
+      isReadValue = isReadRaw;
+    } else if (isReadRaw is int) {
+      isReadValue = isReadRaw == 1;
+    } else if (isReadRaw is String) {
+      isReadValue = isReadRaw == '1' || isReadRaw.toLowerCase() == 'true';
+    }
+    
+    // Debug log for isRead parsing
+    print('DEBUG: Parsed isRead from $isReadRaw to $isReadValue for notification ${json['id']}, title: "${json['title']}"');
+
     return NotificationModel(
       notificationId: json['id'] as int?,
       title: json['title'] as String? ?? '',
@@ -51,7 +65,7 @@ class NotificationModel extends Equatable {
       notificationType: json['notification_type'] != null
           ? NotificationTypeModel.fromJson(json['notification_type'] as Map<String, dynamic>)
           : null,
-      isRead: json['isRead'] as bool? ?? false,
+      isRead: isReadValue,
     );
   }
 

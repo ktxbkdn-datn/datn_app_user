@@ -100,6 +100,8 @@ class AuthRepositoryImpl implements AuthRepository {
     String? cccd,
     String? dateOfBirth,
     String? className,
+    String? studentCode, // thêm
+    String? hometown,    // thêm
   }) async {
     try {
       final result = await remoteDataSource.updateUserProfile(
@@ -109,6 +111,8 @@ class AuthRepositoryImpl implements AuthRepository {
         cccd: cccd,
         dateOfBirth: dateOfBirth,
         className: className,
+        studentCode: studentCode, // thêm
+        hometown: hometown,       // thêm
       );
       return result.map((userModel) => userModel.toEntity());
     } catch (e) {

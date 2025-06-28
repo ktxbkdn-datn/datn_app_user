@@ -300,231 +300,320 @@ class _FullScreenMediaDialogState extends State<FullScreenMediaDialog> {
   Widget build(BuildContext context) {
     if (widget.mediaItems.isEmpty) {
       return Dialog(
-        backgroundColor: Colors.black.withOpacity(0.9),
-        child: const Center(
-          child: Text(
-            'Không có media để hiển thị',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Center(
+            child: Text(
+              'Không có media để hiển thị',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ),
         ),
       );
     }
-
     if (_authToken == null) {
       return Dialog(
-        backgroundColor: Colors.black.withOpacity(0.9),
-        child: const Center(
-          child: Text(
-            'Thiếu token xác thực',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Center(
+            child: Text(
+              'Thiếu token xác thực',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ),
         ),
       );
     }
-
     return Dialog(
-      backgroundColor: Colors.black.withOpacity(0.9),
-      child: Stack(
-        children: [
-          Center(
-            child: PageView.builder(
-              controller: _fullScreenPageController,
-              itemCount: widget.mediaItems.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  _pdfError = null;
-                });
-              },
-              itemBuilder: (context, index) {
-                final media = widget.mediaItems[index];
-                final mediaUrl = _buildMediaUrl(media['media_url'] as String? ?? '');
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(16),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
+            // Main media content
+            Center(
+              child: PageView.builder(
+                controller: _fullScreenPageController,
+                itemCount: widget.mediaItems.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                    _pdfError = null;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final media = widget.mediaItems[index];
+                  final mediaUrl = _buildMediaUrl(media['media_url'] as String? ?? '');
 
-                if (_isDocument(media)) {
-                  if (kIsWeb) {
-                    launchUrl(Uri.parse(mediaUrl), mode: LaunchMode.externalApplication);
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.description, size: 80, color: Colors.white),
-                          SizedBox(height: 16),
-                          Text(
-                            'Tài liệu đang được tải xuống...',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  if (_isWordDocument(media)) {
-                    _downloadDocument(mediaUrl, media['filename'] as String? ?? 'document').then((filePath) {
-                      if (filePath != null) {
-                        OpenFile.open(filePath).then((result) {
-                          if (result.type != ResultType.done) {
-                            print('Error opening document: ${result.message}');
+                  if (_isDocument(media)) {
+                    if (kIsWeb) {
+                      launchUrl(Uri.parse(mediaUrl), mode: LaunchMode.externalApplication);
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.description, size: 80, color: Colors.white),
+                            SizedBox(height: 16),
+                            Text(
+                              'Tài liệu đang được tải xuống...',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    if (_isWordDocument(media)) {
+                      _downloadDocument(mediaUrl, media['filename'] as String? ?? 'document').then((filePath) {
+                        if (filePath != null) {
+                          OpenFile.open(filePath).then((result) {
+                            if (result.type != ResultType.done) {
+                              print('Error opening document: ${result.message}');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Không thể mở tài liệu: ${result.message}. File đã được lưu tại /Download/, vui lòng cài đặt ứng dụng như Microsoft Word hoặc mở thủ công.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                            } else {
+                              print('Document opened successfully: $filePath');
+                            }
+                          }).catchError((e) {
+                            print('Exception while opening document: $e');
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Không thể mở tài liệu: ${result.message}. File đã được lưu tại /Download/, vui lòng cài đặt ứng dụng như Microsoft Word hoặc mở thủ công.',
+                                  'Lỗi mở tài liệu: $e. File đã được lưu tại /Download/, vui lòng mở thủ công.',
                                 ),
                                 backgroundColor: Colors.red,
                                 duration: const Duration(seconds: 5),
                               ),
                             );
-                          } else {
-                            print('Document opened successfully: $filePath');
-                          }
-                        }).catchError((e) {
-                          print('Exception while opening document: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Lỗi mở tài liệu: $e. File đã được lưu tại /Download/, vui lòng mở thủ công.',
-                              ),
-                              backgroundColor: Colors.red,
-                              duration: const Duration(seconds: 5),
+                          });
+                        }
+                      }).catchError((e) {
+                        print('Error downloading document: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi tải tài liệu: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      });
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.description, size: 80, color: Colors.white),
+                            SizedBox(height: 16),
+                            Text(
+                              'Mở tài liệu Word trong ứng dụng bên ngoài...',
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                              textAlign: TextAlign.center,
                             ),
-                          );
-                        });
-                      }
-                    }).catchError((e) {
-                      print('Error downloading document: $e');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Lỗi tải tài liệu: $e'),
-                          backgroundColor: Colors.red,
+                          ],
                         ),
                       );
-                    });
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.description, size: 80, color: Colors.white),
-                          SizedBox(height: 16),
-                          Text(
-                            'Mở tài liệu Word trong ứng dụng bên ngoài...',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return FutureBuilder<String?>(
-                    future: _downloadDocument(mediaUrl, media['filename'] as String? ?? 'document.pdf'),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasData && snapshot.data != null) {
-                        if (_pdfError != null) {
-                          return Center(
-                            child: Text(
-                              'Lỗi tải PDF: $_pdfError',
-                              style: const TextStyle(color: Colors.white),
-                            ),
+                    }
+                    return FutureBuilder<String?>(
+                      future: _downloadDocument(mediaUrl, media['filename'] as String? ?? 'document.pdf'),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasData && snapshot.data != null) {
+                          if (_pdfError != null) {
+                            return Center(
+                              child: Text(
+                                'Lỗi tải PDF: $_pdfError',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            );
+                          }
+                          return PDFView(
+                            filePath: snapshot.data!,
+                            enableSwipe: true,
+                            swipeHorizontal: false,
+                            autoSpacing: true,
+                            pageFling: true,
+                            onError: (error) {
+                              print('PDFView error: $error');
+                              setState(() {
+                                _pdfError = error.toString();
+                              });
+                            },
+                            onRender: (pages) => print('PDF rendered with $pages pages'),
                           );
                         }
-                        return PDFView(
-                          filePath: snapshot.data!,
-                          enableSwipe: true,
-                          swipeHorizontal: false,
-                          autoSpacing: true,
-                          pageFling: true,
-                          onError: (error) {
-                            print('PDFView error: $error');
-                            setState(() {
-                              _pdfError = error.toString();
-                            });
-                          },
-                          onRender: (pages) => print('PDF rendered with $pages pages'),
+                        return const Center(
+                          child: Text('Không thể tải tài liệu PDF', style: TextStyle(color: Colors.white)),
                         );
-                      }
-                      return const Center(
-                        child: Text('Không thể tải tài liệu PDF', style: TextStyle(color: Colors.white)),
-                      );
-                    },
+                      },
+                    );
+                  } else if (_isVideo(media)) {
+                    return FutureBuilder<ChewieController?>(
+                      future: _getChewieController(mediaUrl),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasData) {
+                          return Chewie(controller: snapshot.data!);
+                        }
+                        return const Center(
+                          child: Text('Không thể tải video', style: TextStyle(color: Colors.white)),
+                        );
+                      },
+                    );
+                  }
+                  // Image
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: mediaUrl,
+                        fit: BoxFit.contain,
+                        httpHeaders: {'Authorization': 'Bearer $_authToken'},
+                        placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                        errorWidget: (context, url, error) => const Center(
+                          child: Text('Không thể tải hình ảnh', style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
+                    ),
                   );
-                } else if (_isVideo(media)) {
-                  return FutureBuilder<ChewieController?>(
-                    future: _getChewieController(mediaUrl),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasData) {
-                        return Chewie(controller: snapshot.data!);
-                      }
-                      return const Center(
-                        child: Text('Không thể tải video', style: TextStyle(color: Colors.white)),
-                      );
-                    },
-                  );
-                }
-                return InteractiveViewer(
-                  child: CachedNetworkImage(
-                    imageUrl: mediaUrl,
-                    fit: BoxFit.contain,
-                    httpHeaders: {'Authorization': 'Bearer $_authToken'},
-                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                    errorWidget: (context, url, error) => const Center(
-                      child: Text('Không thể tải hình ảnh', style: TextStyle(color: Colors.white)),
+                },
+              ),
+            ),
+            // Close button
+            Positioned(
+              top: 24,
+              right: 24,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(30),
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 28),
+                  ),
+                ),
+              ),
+            ),
+            // Navigation arrows
+            if (widget.mediaItems.length > 1) ...[
+              if (_currentIndex > 0)
+                Positioned(
+                  left: 24,
+                  top: MediaQuery.of(context).size.height / 2 - 40,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: _previousMedia,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.chevron_left, color: Colors.white, size: 32),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          if (widget.mediaItems.length > 1) ...[
-            if (_currentIndex > 0)
-              Positioned(
-                left: 10,
-                top: MediaQuery.of(context).size.height / 2 - 30,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 30),
-                  onPressed: _previousMedia,
                 ),
-              ),
-            if (_currentIndex < widget.mediaItems.length - 1)
-              Positioned(
-                right: 10,
-                top: MediaQuery.of(context).size.height / 2 - 30,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 30),
-                  onPressed: _nextMedia,
-                ),
-              ),
-            Positioned(
-              bottom: _isVideo(widget.mediaItems[_currentIndex]) ? 60 : 20, // Adjust for video
-              left: 0,
-              right: 0,
-              child: Center(
-                child: SmoothPageIndicator(
-                  controller: _fullScreenPageController,
-                  count: widget.mediaItems.length,
-                  effect: const WormEffect(
-                    dotHeight: 10,
-                    dotWidth: 10,
-                    activeDotColor: Colors.blue,
-                    spacing: 8,
-                    dotColor: Colors.grey,
+              if (_currentIndex < widget.mediaItems.length - 1)
+                Positioned(
+                  right: 24,
+                  top: MediaQuery.of(context).size.height / 2 - 40,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: _nextMedia,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.chevron_right, color: Colors.white, size: 32),
+                      ),
+                    ),
                   ),
+                ),
+              // Indicators
+              Positioned(
+                bottom: 24,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(
+                        widget.mediaItems.length,
+                        (i) => Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: i == _currentIndex ? Colors.white : Colors.white.withOpacity(0.4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            // Counter
+            Positioned(
+              top: 24,
+              left: 24,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentIndex + 1} / ${widget.mediaItems.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

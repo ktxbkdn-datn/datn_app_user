@@ -1,6 +1,6 @@
+import 'package:datn_app/common/components/app_background.dart';
 import 'package:datn_app/common/constant/colors.dart';
 import 'package:datn_app/common/widgets/pagination_controls.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
@@ -83,72 +83,99 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    const maxContentWidth = 600.0;
-    final contentWidth = screenWidth > maxContentWidth ? maxContentWidth : screenWidth;
-    final horizontalPadding = screenWidth > maxContentWidth ? 16.0 : 16.0;
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
+    return AppBackground(
+      child: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Loading overlay
+          if (_isFetchingBills)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.blue),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Đang tải...', style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: maxContentWidth),
-                child: Padding(
-                  padding: EdgeInsets.all(horizontalPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Lịch sử thanh toán',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: kIsWeb ? 18 : 20,
-                              fontWeight: FontWeight.bold,
-                              shadows: const [Shadow(color: Colors.black26, blurRadius: 4)],
+          // Main content
+          Positioned.fill(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                _fetchBills(_currentPage);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 700),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header card
+                        Card(
+                          elevation: 10,
+                          color: Colors.white.withOpacity(0.7),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shadowColor: Colors.blue.withOpacity(0.12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.arrow_back, color: Colors.indigo, size: 26),
+                                      onPressed: () => Get.back(),
+                                      tooltip: 'Quay lại',
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Lịch sử thanh toán',
+                                      style: TextStyle(
+                                        color: Colors.indigo,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.refresh, color: _isFetchingBills ? Colors.grey : Colors.indigo, size: 24),
+                                  onPressed: _isFetchingBills ? null : () => _fetchBills(_currentPage),
+                                  tooltip: 'Làm mới',
+                                ),
+                              ],
                             ),
                           ),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  Icons.refresh,
-                                  color: _isFetchingBills ? Colors.grey : Colors.white,
-                                  size: 24,
-                                ),
-                                onPressed: _isFetchingBills ? null : () => _fetchBills(_currentPage),
-                                tooltip: 'Làm mới',
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                                onPressed: () => Get.back(),
-                                tooltip: 'Quay lại',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Expanded(
-                        child: BlocConsumer<BillBloc, BillState>(
+                        ),
+                        const SizedBox(height: 28),
+                        BlocConsumer<BillBloc, BillState>(
                           listener: (context, state) {
                             setState(() {
                               _isFetchingBills = false;
@@ -177,99 +204,167 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           },
                           builder: (context, state) {
                             if (state is BillLoading && _bills.isEmpty) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const SizedBox(height: 200);
                             }
                             if (state is BillEmpty || _bills.isEmpty) {
-                              return const Center(child: Text('Bạn chưa có hóa đơn nào đã thanh toán'));
-                            }
-                            if (state is BillError) {
-                              return Center(
-                                child: Text('Lỗi: ${state.message}'),
+                              return Card(
+                                elevation: 8,
+                                color: Colors.white.withOpacity(0.7),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                shadowColor: Colors.blue.withOpacity(0.10),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+                                  child: Center(
+                                    child: Text(
+                                      'Bạn chưa có hóa đơn nào đã thanh toán',
+                                      style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ),
                               );
                             }
+                            if (state is BillError) {
+                              return Card(
+                                elevation: 8,
+                                color: Colors.white.withOpacity(0.7),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                shadowColor: Colors.red.withOpacity(0.10),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+                                  child: Center(
+                                    child: Text(
+                                      'Lỗi: ${state.message}',
+                                      style: const TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            // Bill cards grid
                             return Column(
                               children: [
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: _bills.length,
-                                    itemBuilder: (context, index) {
-                                      final bill = _bills[index];
-                                      final serviceName = bill.toJson()['service_name'] ?? 'Không xác định';
-                                      return Card(
-                                        elevation: 5,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16.0),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 1,
+                                    childAspectRatio: 1.9,
+                                    mainAxisSpacing: 18,
+                                  ),
+                                  itemCount: _bills.length,
+                                  itemBuilder: (context, index) {
+                                    final bill = _bills[index];
+                                    final serviceName = bill.toJson()['service_name'] ?? 'Không xác định';
+                                    final statusInfo = _getStatusInfo(bill.paymentStatus);
+                                    return Card(
+                                      elevation: 8,
+                                      color: Colors.white.withOpacity(0.8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      shadowColor: Colors.indigo.withOpacity(0.10),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      "Hóa đơn $serviceName #${bill.billId}",
-                                                      style: TextStyle(
-                                                        fontSize: kIsWeb ? 14 : 16,
+                                                      'Hóa đơn $serviceName #${bill.billId}',
+                                                      style: const TextStyle(
+                                                        fontSize: 17,
                                                         fontWeight: FontWeight.bold,
                                                         color: Colors.black87,
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 8),
+                                                    const SizedBox(height: 6),
                                                     Text(
-                                                      '${bill.totalAmount.toStringAsFixed(2)} VNĐ',
-                                                      style: TextStyle(
-                                                        fontSize: kIsWeb ? 16 : 18,
+                                                      '${bill.totalAmount.toStringAsFixed(0)} VNĐ',
+                                                      style: const TextStyle(
+                                                        fontSize: 22,
                                                         color: Colors.red,
                                                         fontWeight: FontWeight.bold,
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      'Trạng thái: ${mapPaymentStatusToVietnamese(bill.paymentStatus)}',
-                                                      style: TextStyle(
-                                                        fontSize: kIsWeb ? 12 : 14,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      'Ngày thanh toán: ${formatDate(bill.paidAt)}',
-                                                      style: TextStyle(
-                                                        fontSize: kIsWeb ? 12 : 14,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
                                                   ],
                                                 ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: statusInfo['bgColor'],
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(statusInfo['icon'], color: statusInfo['iconColor'], size: 18),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        statusInfo['label'],
+                                                        style: TextStyle(
+                                                          color: statusInfo['textColor'],
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 14),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                const Text('Tháng:', style: TextStyle(color: Colors.black54)),
+                                                Text(bill.billMonth, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                              ],
+                                            ),
+                                            if (bill.paidAt != null)
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  const Text('Ngày thanh toán:', style: TextStyle(color: Colors.black54)),
+                                                  Text(formatDate(bill.paidAt), style: const TextStyle(fontWeight: FontWeight.w500)),
+                                                ],
                                               ),
-                                            ],
-                                          ),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                const Text('Ngày tạo:', style: TextStyle(color: Colors.black54)),
+                                                Text(formatDate(bill.createdAt), style: const TextStyle(fontWeight: FontWeight.w500)),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 if (state is BillLoaded)
-                                  PaginationControls(
-                                    currentPage: _currentPage,
-                                    totalItems: state.billsPagination.totalItems,
-                                    limit: _limit,
-                                    onPageChanged: (newPage) {
-                                      setState(() {
-                                        _currentPage = newPage;
-                                      });
-                                      _saveCurrentPage();
-                                      _fetchBills(newPage);
-                                    },
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 24),
+                                    child: PaginationControls(
+                                      currentPage: _currentPage,
+                                      totalItems: state.billsPagination.totalItems,
+                                      limit: _limit,
+                                      onPageChanged: (newPage) {
+                                        setState(() {
+                                          _currentPage = newPage;
+                                        });
+                                        _saveCurrentPage();
+                                        _fetchBills(newPage);
+                                      },
+                                    ),
                                   ),
                               ],
                             );
                           },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -278,6 +373,51 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> _getStatusInfo(String status) {
+    switch (status) {
+      case 'PAID':
+        return {
+          'label': 'Đã thanh toán',
+          'bgColor': const Color(0xFFD1FAE5),
+          'textColor': const Color(0xFF065F46),
+          'icon': Icons.check_circle,
+          'iconColor': const Color(0xFF10B981),
+        };
+      case 'PENDING':
+        return {
+          'label': 'Chờ thanh toán',
+          'bgColor': const Color(0xFFFFF7CD),
+          'textColor': const Color(0xFFB45309),
+          'icon': Icons.access_time,
+          'iconColor': const Color(0xFFF59E42),
+        };
+      case 'FAILED':
+        return {
+          'label': 'Thanh toán thất bại',
+          'bgColor': const Color(0xFFFECACA),
+          'textColor': const Color(0xFF991B1B),
+          'icon': Icons.cancel,
+          'iconColor': const Color(0xFFEF4444),
+        };
+      case 'OVERDUE':
+        return {
+          'label': 'Quá hạn',
+          'bgColor': const Color(0xFFFFEDD5),
+          'textColor': const Color(0xFFB45309),
+          'icon': Icons.warning,
+          'iconColor': const Color(0xFFF59E42),
+        };
+      default:
+        return {
+          'label': status,
+          'bgColor': const Color(0xFFF3F4F6),
+          'textColor': const Color(0xFF374151),
+          'icon': Icons.receipt_long,
+          'iconColor': const Color(0xFF6B7280),
+        };
+    }
   }
 }
 

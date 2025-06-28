@@ -23,9 +23,8 @@ class ApiService {
   String? _accessToken;
   String? _refreshToken;
   bool _isInitialized = false;
-  final _secureStorage = const FlutterSecureStorage();
-  static const _publicEndpoints = [
-    '/rooms',
+  final _secureStorage = const FlutterSecureStorage();  static const _publicEndpoints = [
+    '/rooms',  
     '/rooms/images',
     '/public/areas',
     '/registrations',
@@ -55,20 +54,15 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('auth_token');
     _refreshToken = prefs.getString('refresh_token');
-    print('Access token from shared preferences: $_accessToken');
-    print('Refresh token from shared preferences: $_refreshToken');
 
     if (_accessToken == null || _refreshToken == null) {
       const bool kIsWeb = bool.fromEnvironment('dart.library.js_util');
       if (!kIsWeb) {
         _accessToken = await _secureStorage.read(key: 'auth_token');
         _refreshToken = await _secureStorage.read(key: 'refresh_token');
-        print('Access token from secure storage: $_accessToken');
-        print('Refresh token from secure storage: $_refreshToken');
         if (_accessToken != null && _refreshToken != null) {
           await prefs.setString('auth_token', _accessToken!);
           await prefs.setString('refresh_token', _refreshToken!);
-          print('Saved tokens to shared preferences from secure storage');
         }
       }
     }
@@ -226,16 +220,58 @@ class ApiService {
   }
 
   Future<dynamic> _parseResponseBody(http.Response response) async {
+    print('Response status for ${response.request?.url.path}: ${response.statusCode} - ${response.body}');
+    
     try {
+      // Handle 500 status code (Internal Server Error)
+      if (response.statusCode == 500) {
+        String errorMessage = "Lỗi không xác định";
+        String rawResponse = response.body;
+        
+        try {
+          // Try to parse the error message from the response
+          final errorData = jsonDecode(response.body);
+          if (errorData is Map) {
+            // Log the full error data for debugging
+            print('Full 500 error response: $errorData');
+            
+            if (errorData.containsKey('message')) {
+              errorMessage = errorData['message'] as String;
+            } else if (errorData.containsKey('error')) {
+              errorMessage = errorData['error'] as String;
+            }
+            
+            // Look for detailed error information
+            if (errorData.containsKey('details') || errorData.containsKey('errors')) {
+              final details = errorData['details'] ?? errorData['errors'];
+              print('Error details: $details');
+              if (details is Map && details.isNotEmpty) {
+                // Construct a more detailed error message
+                final detailMessages = details.entries
+                    .map((entry) => '${entry.key}: ${entry.value}')
+                    .join(', ');
+                errorMessage = '$errorMessage - Details: $detailMessages';
+              }
+            }
+          }
+        } catch (parseError) {
+          print('Error parsing 500 response: $parseError');
+          print('Raw response body: $rawResponse');
+        }
+        
+        throw ApiException('Lỗi server: $errorMessage');
+      }
+      
       final bodyString = response.body;
       if (bodyString.isEmpty) {
         return null;
       }
+      
       final responseBody = jsonDecode(bodyString);
       return responseBody;
     } catch (e) {
-      print('Error parsing response body: $e');
-      throw ApiException('Lỗi parse JSON: $e');
+      print('Unexpected error for ${response.request?.url.path}: $e');
+      throw ApiException('Lỗi xử lý phản hồi: $e');
     }
   }
 
@@ -250,11 +286,21 @@ class ApiService {
         final requestHeaders = {
           'Content-Type': 'application/json',
           if (headers != null) ...headers,
-        };
-
-        bool isPublic = _publicEndpoints.any((publicEndpoint) =>
-            endpoint == publicEndpoint ||
-            endpoint.startsWith(publicEndpoint.endsWith('/') ? publicEndpoint : '$publicEndpoint/'));
+        };        // Kiểm tra xem endpoint có chính xác là một trong các endpoint công khai
+        // hoặc là một endpoint con của endpoint công khai (ví dụ: /auth/refresh/token là con của /auth/refresh)
+        bool isPublic = _publicEndpoints.any((publicEndpoint) {
+          // Khớp chính xác
+          if (endpoint == publicEndpoint) return true;
+          
+          // Kiểm tra endpoint con (phải bắt đầu bằng endpoint công khai theo sau bởi '/')
+          String normalizedPublicEndpoint = publicEndpoint;
+          if (!normalizedPublicEndpoint.endsWith('/')) {
+            normalizedPublicEndpoint = '$normalizedPublicEndpoint/';
+          }
+          
+          return endpoint.startsWith(normalizedPublicEndpoint);
+        });
+        
         if (!isPublic) {
           _checkToken();
           requestHeaders['Authorization'] = 'Bearer $_accessToken';
@@ -365,10 +411,46 @@ class ApiService {
           if (headers != null) ...headers,
         };
         print('PUT request headers: $requestHeaders');
+        print('PUT request body: $body');
+
+        // Special handling for date_of_birth to ensure proper format
+        if (endpoint == '/me' && body.containsKey('date_of_birth')) {
+          try {
+            final dateString = body['date_of_birth'] as String;
+            
+            // Đảm bảo ngày sinh ở định dạng dd-MM-yyyy theo yêu cầu của backend
+            if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateString)) {
+              // Nếu là định dạng yyyy-MM-dd, chuyển sang dd-MM-yyyy
+              final parsedDate = DateTime.parse(dateString);
+              body['date_of_birth'] = '${parsedDate.day.toString().padLeft(2, '0')}-'
+                  '${parsedDate.month.toString().padLeft(2, '0')}-'
+                  '${parsedDate.year.toString().padLeft(4, '0')}';
+              print('Reformatted date_of_birth from yyyy-MM-dd to dd-MM-yyyy: ${body['date_of_birth']}');
+            } else if (!RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(dateString)) {
+              // Nếu không phải định dạng dd-MM-yyyy, thử parse và format lại
+              final parsedDate = DateTime.parse(dateString);
+              body['date_of_birth'] = '${parsedDate.day.toString().padLeft(2, '0')}-'
+                  '${parsedDate.month.toString().padLeft(2, '0')}-'
+                  '${parsedDate.year.toString().padLeft(4, '0')}';
+              print('Reformatted date_of_birth to dd-MM-yyyy: ${body['date_of_birth']}');
+            } else {
+              print('date_of_birth already in correct format (dd-MM-yyyy): $dateString');
+            }
+          } catch (e) {
+            print('Error formatting date_of_birth: $e');
+            // If we can't parse the date, remove it to avoid server errors
+            if (body['date_of_birth'] == null || body['date_of_birth'].toString().isEmpty) {
+              body.remove('date_of_birth');
+              print('Removed invalid date_of_birth from request body');
+            }
+          }
+        }
 
         final uri = Uri.parse('$baseUrl$endpoint');
 
-        print('Sending PUT request...');
+        print('Sending PUT request to $uri');
+        print('Final request body: $body');
+        
         final response = await http.put(
           uri,
           headers: requestHeaders,
@@ -522,10 +604,20 @@ class ApiService {
     bool Function(http.Response) isSuccess,
   ) async {
     const int maxRetries = 2;
-    int retryCount = 0;
-    bool isPublic = _publicEndpoints.any((publicEndpoint) =>
-        endpoint == publicEndpoint ||
-        endpoint.startsWith(publicEndpoint.endsWith('/') ? publicEndpoint : '$publicEndpoint/'));
+    int retryCount = 0;    // Kiểm tra xem endpoint có chính xác là một trong các endpoint công khai
+    // hoặc là một endpoint con của endpoint công khai (ví dụ: /auth/refresh/token là con của /auth/refresh)
+    bool isPublic = _publicEndpoints.any((publicEndpoint) {
+      // Khớp chính xác
+      if (endpoint == publicEndpoint) return true;
+      
+      // Kiểm tra endpoint con (phải bắt đầu bằng endpoint công khai theo sau bởi '/')
+      String normalizedPublicEndpoint = publicEndpoint;
+      if (!normalizedPublicEndpoint.endsWith('/')) {
+        normalizedPublicEndpoint = '$normalizedPublicEndpoint/';
+      }
+      
+      return endpoint.startsWith(normalizedPublicEndpoint);
+    });
 
     while (retryCount < maxRetries) {
       try {

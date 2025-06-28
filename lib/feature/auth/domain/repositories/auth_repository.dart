@@ -35,6 +35,8 @@ abstract class AuthRepository {
     String? cccd,
     String? dateOfBirth,
     String? className,
+    String? studentCode, // thêm
+    String? hometown,    // thêm
   });
 
   Future<Either<Failure, UserEntity>> updateAvatar({

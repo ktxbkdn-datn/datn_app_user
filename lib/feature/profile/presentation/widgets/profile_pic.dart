@@ -29,7 +29,10 @@ class ProfilePic extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundImage: NetworkImage(image),
+            // Comment lại phần tải NetworkImage để tránh lỗi 404
+            // backgroundImage: NetworkImage(image),
+            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
+            child: Icon(Icons.person, size: 50, color: Theme.of(context).primaryColor),
           ),
           if (isShowPhotoUpload)
             InkWell(

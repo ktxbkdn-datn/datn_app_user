@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
+import 'package:get/get_navigation/src/routes/transitions_type.dart' as get_transitions;
 import 'package:ionicons/ionicons.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:ui';
 
+import '../../../../common/components/app_background.dart';
 import '../../../../common/constant/colors.dart';
+import '../../../../common/utils/responsive_utils.dart';
+import '../../../../common/utils/responsive_widget_extension.dart';
+import '../../../../common/widgets/responsive_scaffold.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 import '../../../welcome_page/welcome_page.dart';
-import '../widgets/forward_button.dart';
-import '../widgets/setting_switch.dart';
-import '../widgets/setting_items.dart';
 import '../../../contract/presentation/page/contract_page.dart';
+import '../widgets/setting_items.dart';
+import '../widgets/edit_item.dart';
 import 'edit_profile.dart';
 import 'change_password.dart';
 
@@ -25,274 +28,220 @@ class SettingPage extends StatefulWidget {
 }
 
 class _SettingPageState extends State<SettingPage> {
-  bool isDarkMode = false;
-  bool _hasNetworkImageError = false;
+  void _refreshUserProfile() {
+    if (mounted) {
+      context.read<AuthBloc>().add(const GetUserProfileEvent());
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    context.read<AuthBloc>().add(const GetUserProfileEvent());
+    _refreshUserProfile();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+    return AppBackground(
+      child: Stack(
         children: [
-          // Glassmorphism Background
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          SafeArea(
-            child: BlocConsumer<AuthBloc, AuthState>(
-              listener: (context, state) {
-                if (state is LoggedOut) {
-                  Get.to(() => const WelcomePage());
-                }
-              },
-              builder: (context, state) {
-                if (state is AuthLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-
-                final user = state is UserProfileLoaded ? state.user : null;
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<AuthBloc>().add(const GetUserProfileEvent());
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Cài đặt",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.cardBackground,
-                            shadows: const [Shadow(color: AppColors.shadowColor, blurRadius: 4)],
-                          ),
+          BlocConsumer<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is LoggedOut || state is TokenMissingError) {
+                Get.offAll(
+                  () => LoginPage(),
+                  transition: get_transitions.Transition.fadeIn,
+                  duration: const Duration(milliseconds: 400),
+                );
+              }
+            },
+            builder: (context, state) {
+              if (state is AuthLoading) {
+                return Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Card(
+                      color: Colors.white,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ResponsiveUtils.wp(context, 6), 
+                          vertical: ResponsiveUtils.hp(context, 2)
                         ),
-                        const SizedBox(height: 30),
-                        Text(
-                          "Tài khoản",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.cardBackground,
-                            shadows: const [Shadow(color: AppColors.shadowColor, blurRadius: 4)],
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: ResponsiveUtils.wp(context, 6),
+                              height: ResponsiveUtils.wp(context, 6),
+                              child: CircularProgressIndicator(strokeWidth: 3, color: Colors.blue),
+                            ),
+                            SizedBox(width: ResponsiveUtils.wp(context, 4)),
+                            Text(
+                              'Đang tải...', 
+                              style: TextStyle(fontSize: ResponsiveUtils.sp(context, 16))
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 30),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBackground,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: AppColors.shadowColor,
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 35,
-                                backgroundImage: user?.avatarUrl != null && !_hasNetworkImageError
-                                    ? NetworkImage(user!.avatarUrl!)
-                                    : null,
-                                onBackgroundImageError: user?.avatarUrl != null && !_hasNetworkImageError
-                                    ? (exception, stackTrace) {
-                                        debugPrint("Failed to load avatar in SettingPage: $exception");
-                                        if (mounted) {
-                                          setState(() {
-                                            _hasNetworkImageError = true;
-                                          });
-                                        }
-                                      }
-                                    : null,
-                                child: _hasNetworkImageError || user?.avatarUrl == null
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 50,
-                                        color: AppColors.textSecondary,
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 15),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    user?.fullname ?? "Fullname",
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              ForwardButton(
-                                onTap: () {
-                                  Get.to(() => const EditProfileScreen());
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        Text(
-                          "Cài đặt",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.cardBackground,
-                            shadows: const [Shadow(color: AppColors.shadowColor, blurRadius: 4)],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildSettingItem(
-                          title: 'Đổi mật khẩu',
-                          iconColor: AppColors.buttonPrimary,
-                          icon: Ionicons.lock_closed,
-                          onTap: () {
-                            Get.to(() => const ChangePasswordScreen());
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        _buildSettingItem(
-                          title: 'Xem hợp đồng',
-                          iconColor: Colors.teal,
-                          icon: Ionicons.document_text,
-                          onTap: () {
-                            Get.to(() => const ContractPage());
-                          },
-                        ),
-                        // const SizedBox(height: 20),
-                        // _buildSettingItem(
-                        //   title: 'Help',
-                        //   iconColor: AppColors.buttonError,
-                        //   icon: Ionicons.help,
-                        //   onTap: () {},
-                        // ),
-                        const SizedBox(height: 20),
-                        _buildSettingItem(
-                          title: 'Đăng xuất',
-                          iconColor: AppColors.textPrimary,
-                          icon: Ionicons.log_out,
-                          onTap: () {
-                            context.read<AuthBloc>().add(const LogoutEvent());
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              }
 
-  Widget _buildSettingItem({
-    required String title,
-    required Color iconColor,
-    required IconData icon,
-    String? value,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowColor,
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 30),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
-              ),
-            ),
-            if (value != null)
-              Text(
-                value,
-                style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
-              ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
+              final user = state is UserProfileLoaded ? state.user : null;
 
-  Widget _buildSettingSwitch({
-    required String title,
-    required Color iconColor,
-    required IconData icon,
-    required bool value,
-    required Function(bool) onTap,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 30),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onTap,
-            activeColor: AppColors.buttonPrimary,
-            inactiveThumbColor: AppColors.textSecondary,
-            inactiveTrackColor: AppColors.textSecondary.withOpacity(0.5),
+              return RefreshIndicator(
+                onRefresh: () async {
+                  _refreshUserProfile();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveUtils.wp(context, 4), 
+                    vertical: ResponsiveUtils.hp(context, 4)
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Card
+                      Card(
+                        color: Colors.white.withOpacity(0.7),
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ResponsiveUtils.wp(context, 5), 
+                            vertical: ResponsiveUtils.hp(context, 2)
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Cài đặt',
+                                style: TextStyle(
+                                  fontSize: ResponsiveUtils.sp(context, 24),
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.refresh, color: Color(0xFF6366F1), size: ResponsiveUtils.sp(context, 24)),
+                                onPressed: () {
+                                  _refreshUserProfile();
+                                },
+                                tooltip: 'Làm mới',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: ResponsiveUtils.hp(context, 3)),
+                      // Account Section
+                      Text(
+                        'Tài khoản',
+                        style: TextStyle(
+                          fontSize: ResponsiveUtils.sp(context, 20),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
+                        ),
+                      ),
+                      SizedBox(height: ResponsiveUtils.hp(context, 1.5)),
+                      // Profile Card
+                      ProfileCard(
+                        avatarUrl: user?.avatarUrl,
+                        fullname: user?.fullname,
+                        email: user?.email,
+                        onTap: () {
+                          Get.to(
+                            () => const EditProfileScreen(),
+                            duration: const Duration(milliseconds: 300),
+                          )?.then((_) {
+                            Future.delayed(const Duration(milliseconds: 100), () {
+                              if (mounted) {
+                                _refreshUserProfile();
+                              }
+                            });
+                          });
+                        },
+                      ),
+                      SizedBox(height: ResponsiveUtils.hp(context, 4)),
+                      // Settings Section
+                      Text(
+                        'Cài đặt',
+                        style: TextStyle(
+                          fontSize: ResponsiveUtils.sp(context, 20),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
+                        ),
+                      ),
+                      SizedBox(height: ResponsiveUtils.hp(context, 1.5)),
+                      // Settings Cards
+                      Column(
+                        children: [
+                          SettingsCard(
+                            title: 'Đổi mật khẩu',
+                            icon: Ionicons.lock_closed,
+                            iconColor: const Color(0xFF3b82f6),
+                            onTap: () {
+                              // Navigate to change password page with increased delay for animation
+                              Get.to(
+                                () => const ChangePasswordScreen(),
+                                transition: get_transitions.Transition.cupertino,
+                                duration: const Duration(milliseconds: 300),
+                              )?.then((_) {
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  if (mounted) {
+                                    _refreshUserProfile();
+                                  }
+                                });
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          SettingsCard(
+                            title: 'Xem hợp đồng',
+                            icon: Ionicons.document_text,
+                            iconColor: const Color(0xFF14b8a6),
+                            onTap: () {
+                              // Navigate to contract page with increased delay for animation
+                              Get.to(
+                                () => const ContractPage(),
+                                transition: get_transitions.Transition.cupertino,
+                                duration: const Duration(milliseconds: 300),
+                              )?.then((_) {
+                                Future.delayed(const Duration(milliseconds: 100), () {
+                                  if (mounted) {
+                                    _refreshUserProfile();
+                                  }
+                                });
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          SettingsCard(
+                            title: 'Đăng xuất',
+                            icon: Ionicons.log_out,
+                            iconColor: const Color(0xFFef4444),
+                            onTap: () {
+                              // Always navigate to LoginPage on tap
+                              context.read<AuthBloc>().add(const LogoutEvent());
+                              Get.offAll(
+                                () => LoginPage(),            
+                                duration: const Duration(milliseconds: 400),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

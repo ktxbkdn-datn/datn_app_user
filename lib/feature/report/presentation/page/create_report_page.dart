@@ -1,12 +1,15 @@
+import 'dart:ui';
+import 'package:datn_app/common/constant/colors.dart';
+import 'package:datn_app/common/components/app_background.dart';
+import 'package:datn_app/common/utils/responsive_utils.dart';
+import 'package:datn_app/common/utils/responsive_widget_extension.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
-import '../../../../common/constant/colors.dart';
 import '../../domain/entity/report_type_entity.dart';
 import '../bloc/report_bloc.dart';
 import '../bloc/report_event.dart';
@@ -124,7 +127,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           Get.snackbar(
             'Lỗi',
             'File ${media.name} vượt quá giới hạn ${maxVideoSizeInBytes ~/ 1024 ~/ 1024} MB',
-            snackPosition: SnackPosition.BOTTOM,
+            snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red,
             colorText: Colors.white,
             margin: EdgeInsets.all(8),
@@ -151,7 +154,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
             Get.snackbar(
               'Lỗi',
               'File ${media.name} không được hỗ trợ (chỉ hỗ trợ jpg, jpeg, png, gif, mp4, avi)',
-              snackPosition: SnackPosition.BOTTOM,
+              snackPosition: SnackPosition.TOP,
               backgroundColor: Colors.red,
               colorText: Colors.white,
               margin: EdgeInsets.all(8),
@@ -165,7 +168,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
             Get.snackbar(
               'Lỗi',
               'File ${media.name} vượt quá giới hạn ${maxImageSizeInBytes ~/ 1024 ~/ 1024} MB',
-              snackPosition: SnackPosition.BOTTOM,
+              snackPosition: SnackPosition.TOP,
               backgroundColor: Colors.red,
               colorText: Colors.white,
               margin: EdgeInsets.all(8),
@@ -212,7 +215,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           Get.snackbar(
             'Lỗi',
             'Chỉ được tải lên tối đa 15 file mỗi lần',
-            snackPosition: SnackPosition.BOTTOM,
+            snackPosition: SnackPosition.TOP,
             backgroundColor: Colors.red,
             colorText: Colors.white,
             margin: EdgeInsets.all(8),
@@ -236,7 +239,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       Get.snackbar(
         'Lỗi',
         'Lỗi khi chọn file: $e',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         margin: EdgeInsets.all(8),
@@ -262,7 +265,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       Get.snackbar(
         'Lỗi',
         'Vui lòng nhập tiêu đề báo cáo',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         margin: EdgeInsets.all(8),
@@ -274,7 +277,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       Get.snackbar(
         'Lỗi',
         'Vui lòng nhập nội dung báo cáo',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         margin: EdgeInsets.all(8),
@@ -316,14 +319,18 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         title: titleController.text,
         content: contentController.text,
         reportTypeId: selectedReportTypeId,
-        images: images.isNotEmpty ? images : null,
-        bytes: bytes.isNotEmpty ? bytes : null,
+        images: images,
+        bytes: bytes,
       ));
     } catch (e) {
+      setState(() {
+        _isSubmitting = false;
+        _uploadProgress = 0.0;
+      });
       Get.snackbar(
         'Lỗi',
         'Lỗi khi gửi báo cáo: $e',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         margin: EdgeInsets.all(8),
@@ -336,17 +343,468 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           ),
         ),
       );
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-        _uploadProgress = 0.0;
-      });
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBackground(
+      child: BlocListener<ReportBloc, ReportState>(
+        listener: (context, state) async {
+          if (state is ReportLoaded && state.selectedReport != null && _isSubmitting) {
+            setState(() {
+              _isSubmitting = false;
+              _uploadProgress = 0.0;
+            });
+            Get.snackbar(
+              'Thành công',
+              'Gửi báo cáo thành công!',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+              margin: const EdgeInsets.all(8),
+              borderRadius: 8,
+              duration: const Duration(seconds: 2),
+            );
+            await Future.delayed(const Duration(milliseconds: 1200));
+            if (mounted) Navigator.pop(context, true);
+          } else if (state is ReportError && _isSubmitting) {
+            setState(() {
+              _isSubmitting = false;
+              _uploadProgress = 0.0;
+            });
+            Get.snackbar(
+              'Lỗi',
+              state.message,
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              margin: const EdgeInsets.all(8),
+              borderRadius: 8,
+            );
+          }
+        },
+        child: Stack(
+          children: [
+            // Glassmorphism background
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xE6F0F4FF), Color(0xE6F3E8FF), Color(0xE6F8E1FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            // Glassy blurred circles for effect
+            Positioned(
+              top: -80,
+              left: -60,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -100,
+              right: -80,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Colors.purple.withOpacity(0.18), Colors.pink.withOpacity(0.12)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header Card
+                        Card(
+                          elevation: 10,
+                          color: Colors.white.withOpacity(0.7),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Tạo báo cáo mới",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        // Form Card
+                        Card(
+                          elevation: 10,
+                          color: Colors.white.withOpacity(0.7),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Report Type
+                                const Text(
+                                  "Loại báo cáo",
+                                  style: TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 8),
+                                BlocBuilder<ReportBloc, ReportState>(
+                                  builder: (context, state) {
+                                    List<ReportTypeEntity> reportTypes = state is ReportLoaded ? state.reportTypes : [];
+                                    return DropdownButtonFormField<int>(
+                                      value: selectedReportTypeId,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          selectedReportTypeId = value;
+                                        });
+                                      },
+                                      items: reportTypes
+                                          .map((type) => DropdownMenuItem(
+                                                value: type.reportTypeId,
+                                                child: Text(type.name),
+                                              ))
+                                          .toList(),
+                                      hint: const Text('Chọn loại báo cáo'),
+                                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: Colors.white.withOpacity(0.5),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: ResponsiveUtils.wp(context, 6), 
+                                          vertical: ResponsiveUtils.hp(context, 2.2)
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderSide: BorderSide.none,
+                                          borderRadius: BorderRadius.circular(ResponsiveUtils.wp(context, 12.5)),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 18),
+                                // Title
+                                  Text(
+                                  "Tiêu đề báo cáo",
+                                  style: TextStyle(
+                                    fontSize: ResponsiveUtils.sp(context, 15), 
+                                    color: Colors.black87, 
+                                    fontWeight: FontWeight.w500
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: titleController,
+                                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.5),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                                    border: OutlineInputBorder(
+                                      borderSide: BorderSide.none,
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                    hintText: 'Nhập tiêu đề báo cáo',
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                // Content
+                                  Text(
+                                  "Nội dung báo cáo",
+                                  style: TextStyle(
+                                    fontSize: ResponsiveUtils.sp(context, 15), 
+                                    color: Colors.black87, 
+                                    fontWeight: FontWeight.w500
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: contentController,
+                                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+                                  maxLines: 5,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.5),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                                    border: OutlineInputBorder(
+                                      borderSide: BorderSide.none,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    hintText: 'Nhập nội dung chi tiết báo cáo',
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                // Media Upload
+                                const Text(
+                                  "Media (Ảnh/Video)",
+                                  style: TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 8),
+                                if (_isSubmitting)
+                                  LinearProgressIndicator(
+                                    value: _uploadProgress,
+                                    backgroundColor: Colors.grey[300],
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                                  ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: _pickMedia,
+                                  child: Container(
+                                    height: 120,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.4),
+                                      border: Border.all(color: Colors.blueGrey.withOpacity(0.18), width: 1.5),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blueGrey.withOpacity(0.08),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: _isProcessingFiles
+                                          ? const CircularProgressIndicator()
+                                          : Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.upload_file, size: 36, color: Colors.blueGrey),
+                                                const SizedBox(height: 8),
+                                                const Text(
+                                                  'Nhấn để chọn file',
+                                                  style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Tối đa $maxFiles file, ảnh < ${maxImageSizeInBytes ~/ 1024 ~/ 1024} MB, video < ${maxVideoSizeInBytes ~/ 1024 ~/ 1024} MB',
+                                                  style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                if (selectedMedia.isNotEmpty) ...[
+                                  const Text(
+                                    'File đã chọn:',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...selectedMedia.asMap().entries.map((entry) {
+                                    int index = entry.key;
+                                    ImageData media = entry.value;
+                                    return Card(
+                                      color: Colors.white.withOpacity(0.7),
+                                      elevation: 3,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Row(
+                                          children: [
+                                            if (media.mimeType != null && media.mimeType!.startsWith('video/'))
+                                              (kIsWeb || _chewieControllers[index] == null)
+                                                  ? const Icon(
+                                                      Icons.videocam,
+                                                      size: 50,
+                                                      color: Colors.blueGrey,
+                                                    )
+                                                  : SizedBox(
+                                                      width: 50,
+                                                      height: 50,
+                                                      child: Chewie(
+                                                        controller: _chewieControllers[index]!,
+                                                      ),
+                                                    )
+                                            else
+                                              FutureBuilder<Uint8List>(
+                                                future: media.xFile!.readAsBytes(),
+                                                builder: (context, snapshot) {
+                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                    return const SizedBox(
+                                                      width: 50,
+                                                      height: 50,
+                                                      child: Center(child: CircularProgressIndicator()),
+                                                    );
+                                                  }
+                                                  if (snapshot.hasData) {
+                                                    return ClipRRect(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      child: Image.memory(
+                                                        snapshot.data!,
+                                                        width: 50,
+                                                        height: 50,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context, error, stackTrace) {
+                                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                            Get.snackbar(
+                                                              'Lỗi',
+                                                              'Không thể load ảnh',
+                                                              snackPosition: SnackPosition.TOP,
+                                                              backgroundColor: Colors.red,
+                                                              colorText: Colors.white,
+                                                              margin: const EdgeInsets.all(8),
+                                                              borderRadius: 8,
+                                                            );
+                                                          });
+                                                          return const Icon(
+                                                            Icons.broken_image,
+                                                            size: 50,
+                                                            color: Colors.blueGrey,
+                                                          );
+                                                        },
+                                                      ),
+                                                    );
+                                                  }
+                                                  return const Icon(
+                                                    Icons.broken_image,
+                                                    size: 50,
+                                                    color: Colors.blueGrey,
+                                                  );
+                                                },
+                                              ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    media.xFile!.name,
+                                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    _formatFileSize(media.fileSize!),
+                                                    style: const TextStyle(fontSize: 12, color: Colors.blueGrey),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.close, size: 20, color: Colors.red),
+                                              onPressed: () => _removeMedia(index),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  const SizedBox(height: 16),
+                                ],
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: _isSubmitting || _isProcessingFiles ? null : () => Navigator.pop(context),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white.withOpacity(0.7),
+                                          foregroundColor: Colors.black87,
+                                          minimumSize: const Size(double.infinity, 48),
+                                          shape: const StadiumBorder(),
+                                          elevation: 0,
+                                        ),
+                                        child: const Text("Hủy", style: TextStyle(fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                          foregroundColor: Colors.white,
+                                          minimumSize: const Size(double.infinity, 48),
+                                          shape: const StadiumBorder(),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: _isSubmitting || _isProcessingFiles ? null : _submitReport,
+                                        child: _isSubmitting
+                                            ? Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: const [
+                                                  SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  Text("Đang gửi...", style: TextStyle(fontWeight: FontWeight.w600)),
+                                                ],
+                                              )
+                                            : const Text("Gửi báo cáo", style: TextStyle(fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (_isSubmitting)
+              Container(
+                color: Colors.black.withOpacity(0.25),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   bool _isAllowedFile(String filename) {
     final extension = filename.split('.').last.toLowerCase();
-    return _allowedExtensions.contains(extension);
+    return ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'avi'].contains(extension);
   }
 
   String _getMimeTypeFromExtension(String path) {
@@ -392,381 +850,6 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       double sizeInMB = sizeInBytes / (1024 * 1024);
       return '${sizeInMB.toStringAsFixed(1)} MB';
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.glassmorphismStart, AppColors.glassmorphismEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          SafeArea(
-            child: BlocListener<ReportBloc, ReportState>(
-              listener: (context, state) {
-                if (state is ReportError) {
-                  Get.snackbar(
-                    'Lỗi',
-                    'Lỗi: ${state.message}',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.red,
-                    colorText: Colors.white,
-                    margin: EdgeInsets.all(8),
-                    borderRadius: 8,
-                    mainButton: TextButton(
-                      onPressed: _submitReport,
-                      child: Text(
-                        'Thử lại',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  );
-                } else if (state is ReportLoaded && state.selectedReport != null) {
-                  Get.snackbar(
-                    'Thành công',
-                    'Báo cáo đã được gửi thành công',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
-                    margin: EdgeInsets.all(8),
-                    borderRadius: 8,
-                  );
-                  Navigator.pop(context, true); // Trả về true khi báo cáo được tạo thành công
-                }
-              },
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      margin: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                          const Expanded(
-                            child: Text(
-                              "Tạo báo cáo mới",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      margin: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Loại báo cáo",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          BlocBuilder<ReportBloc, ReportState>(
-                            builder: (context, state) {
-                              List<ReportTypeEntity> reportTypes = state is ReportLoaded ? state.reportTypes : [];
-                              return DropdownButtonFormField<int>(
-                                value: selectedReportTypeId,
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedReportTypeId = value;
-                                  });
-                                },
-                                items: reportTypes
-                                    .map((type) => DropdownMenuItem(
-                                  value: type.reportTypeId,
-                                  child: Text(type.name ?? 'Không xác định'),
-                                ))
-                                    .toList(),
-                                hint: const Text('Chọn loại báo cáo'),
-                                style: const TextStyle(color: Colors.black87),
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: Colors.grey.withOpacity(0.1),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0 * 1.5, vertical: 16.0),
-                                  border: const OutlineInputBorder(
-                                    borderSide: BorderSide.none,
-                                    borderRadius: BorderRadius.all(Radius.circular(50)),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Tiêu đề báo cáo",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: titleController,
-                            style: const TextStyle(color: Colors.black87),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.withOpacity(0.1),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0 * 1.5, vertical: 16.0),
-                              border: const OutlineInputBorder(
-                                borderSide: BorderSide.none,
-                                borderRadius: BorderRadius.all(Radius.circular(50)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Nội dung báo cáo",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: contentController,
-                            style: const TextStyle(color: Colors.black87),
-                            maxLines: 5,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.withOpacity(0.1),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0 * 1.5, vertical: 16.0),
-                              border: const OutlineInputBorder(
-                                borderSide: BorderSide.none,
-                                borderRadius: BorderRadius.all(Radius.circular(12)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            "Media (Ảnh/Video)",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_isSubmitting)
-                            LinearProgressIndicator(
-                              value: _uploadProgress,
-                              backgroundColor: Colors.grey[300],
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                            ),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: _pickMedia,
-                            child: Container(
-                              height: 120,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey, style: BorderStyle.solid, width: 1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: _isProcessingFiles
-                                    ? const CircularProgressIndicator()
-                                    : Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.upload_file, size: 32, color: Colors.grey),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Nhấn để chọn file',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tối đa $maxFiles file, ảnh < ${maxImageSizeInBytes ~/ 1024 ~/ 1024} MB, video < ${maxVideoSizeInBytes ~/ 1024 ~/ 1024} MB',
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          if (selectedMedia.isNotEmpty) ...[
-                            const Text(
-                              'File đã chọn:',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            ...selectedMedia.asMap().entries.map((entry) {
-                              int index = entry.key;
-                              ImageData media = entry.value;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    if (media.mimeType != null && media.mimeType!.startsWith('video/'))
-                                      (kIsWeb || _chewieControllers[index] == null)
-                                          ? const Icon(
-                                        Icons.videocam,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      )
-                                          : SizedBox(
-                                        width: 50,
-                                        height: 50,
-                                        child: Chewie(
-                                          controller: _chewieControllers[index]!,
-                                        ),
-                                      )
-                                    else
-                                      FutureBuilder<Uint8List>(
-                                        future: media.xFile!.readAsBytes(),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.waiting) {
-                                            return const SizedBox(
-                                              width: 50,
-                                              height: 50,
-                                              child: Center(child: CircularProgressIndicator()),
-                                            );
-                                          }
-                                          if (snapshot.hasData) {
-                                            return ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.memory(
-                                                snapshot.data!,
-                                                width: 50,
-                                                height: 50,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                          return const Icon(
-                                            Icons.broken_image,
-                                            size: 50,
-                                            color: Colors.grey,
-                                          );
-                                        },
-                                      ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            media.xFile!.name,
-                                            style: const TextStyle(fontSize: 14),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            _formatFileSize(media.fileSize!),
-                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, size: 20, color: Colors.red),
-                                      onPressed: () => _removeMedia(index),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                            const SizedBox(height: 16),
-                          ],
-                          const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              SizedBox(
-                                width: 120,
-                                child: ElevatedButton(
-                                  onPressed: _isSubmitting || _isProcessingFiles ? null : () => Navigator.pop(context),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey.withOpacity(0.1),
-                                    foregroundColor: Colors.black87,
-                                    minimumSize: const Size(double.infinity, 48),
-                                    shape: const StadiumBorder(),
-                                  ),
-                                  child: const Text("Hủy"),
-                                ),
-                              ),
-                              const SizedBox(width: 16.0),
-                              SizedBox(
-                                width: 160,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(double.infinity, 48),
-                                    shape: const StadiumBorder(),
-                                  ),
-                                  onPressed: _isSubmitting || _isProcessingFiles ? null : _submitReport,
-                                  child: _isSubmitting
-                                      ? const CircularProgressIndicator(color: Colors.white)
-                                      : const Text("Gửi báo cáo"),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

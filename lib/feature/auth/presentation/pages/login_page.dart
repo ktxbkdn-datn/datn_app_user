@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../common/utils/responsive_utils.dart';
 import '../../../../common/widgets/custom_materialbutton.dart';
 import '../../../../src/core/di/injection.dart';
 import '../bloc/auth_bloc.dart';
@@ -20,6 +21,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isObscure = true;
@@ -36,48 +38,85 @@ class _LoginPageState extends State<LoginPage> {
   // Regex cho định dạng email
   final RegExp emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
+  bool _emailTouched = false;
+  bool _passwordTouched = false;
+
   @override
   void initState() {
     super.initState();
-    // emailController.text = "11@gmail.com";
-    // passwordController.text = "NewPass12345!";
-    // Thêm listener cho FocusNode
-    emailFocusNode.addListener(() {
-      if (!emailFocusNode.hasFocus) {
-        _validateEmail(emailController.text);
-      }
-    });
-    passwordFocusNode.addListener(() {
-      if (!passwordFocusNode.hasFocus) {
-        _validatePassword(passwordController.text);
-      }
-    });
+    
+    try {
+      // Add listeners to FocusNodes using named methods
+      emailFocusNode.addListener(_emailFocusListener);
+      passwordFocusNode.addListener(_passwordFocusListener);
 
-    // Thêm listener để cập nhật hasErrorsNotifier khi lỗi thay đổi
-    emailError.addListener(_updateHasErrors);
-    passwordError.addListener(_updateHasErrors);
+      // Thêm listener để cập nhật hasErrorsNotifier khi lỗi thay đổi
+      emailError.addListener(_updateHasErrors);
+      passwordError.addListener(_updateHasErrors);
 
-    // Kiểm tra ban đầu
-    _validateEmail(emailController.text);
-    _validatePassword(passwordController.text);
+      // Kiểm tra ban đầu
+      _validateEmail(emailController.text);
+      _validatePassword(passwordController.text);
+    } catch (e) {
+      debugPrint('Error in LoginPage initState: $e');
+    }
+  }
+
+  // Focus listeners
+  void _emailFocusListener() {
+    if (!emailFocusNode.hasFocus) {
+      setState(() {
+        _emailTouched = true;
+      });
+      _validateEmail(emailController.text);
+    }
+  }
+
+  void _passwordFocusListener() {
+    if (!passwordFocusNode.hasFocus) {
+      setState(() {
+        _passwordTouched = true;
+      });
+      _validatePassword(passwordController.text);
+    }
   }
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    emailFocusNode.dispose();
-    passwordFocusNode.dispose();
-    emailError.removeListener(_updateHasErrors);
-    passwordError.removeListener(_updateHasErrors);
-    emailError.dispose();
-    passwordError.dispose();
-    hasErrorsNotifier.dispose();
+    try {
+      // Remove the specific listeners before disposing
+      if (emailFocusNode != null) {
+        emailFocusNode.removeListener(_emailFocusListener);
+      }
+      if (passwordFocusNode != null) {
+        passwordFocusNode.removeListener(_passwordFocusListener);
+      }
+      
+      if (emailError != null) {
+        emailError.removeListener(_updateHasErrors);
+      }
+      if (passwordError != null) {
+        passwordError.removeListener(_updateHasErrors);
+      }
+      
+      // Dispose resources safely
+      emailController.dispose();
+      passwordController.dispose();
+      emailFocusNode.dispose();
+      passwordFocusNode.dispose();
+      emailError.dispose();
+      passwordError.dispose();
+      hasErrorsNotifier.dispose();
+    } catch (e) {
+      debugPrint('Error in LoginPage dispose: $e');
+    }
+    
     super.dispose();
   }
 
   // Hàm kiểm tra email
   void _validateEmail(String value) {
+    if (!_emailTouched) return; // Chỉ validate khi đã chạm vào
     if (value.isEmpty) {
       emailError.value = "Email không được để trống";
     } else if (!emailRegex.hasMatch(value)) {
@@ -89,6 +128,7 @@ class _LoginPageState extends State<LoginPage> {
 
   // Hàm kiểm tra mật khẩu
   void _validatePassword(String value) {
+    if (!_passwordTouched) return; // Chỉ validate khi đã chạm vào
     if (value.isEmpty) {
       passwordError.value = "Mật khẩu không được để trống";
     } else {
@@ -114,15 +154,15 @@ class _LoginPageState extends State<LoginPage> {
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.grey[100],
         extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          leading: IconButton(
+        appBar: AppBar(          leading: IconButton(
             icon: const Icon(
               Icons.arrow_back_ios,
               color: Colors.black,
               size: 20,
             ),
             onPressed: () {
-              Navigator.of(context).pop();
+              // Navigate back to welcome page using GetX
+              Get.offNamed('/welcome');
             },
           ),
           backgroundColor: Colors.transparent,
@@ -142,6 +182,14 @@ class _LoginPageState extends State<LoginPage> {
                 margin: const EdgeInsets.all(16),
                 borderRadius: 10,
               );
+              
+              // Reset auth state to initial after showing error message
+              // This ensures the login button will be enabled again
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted) {
+                  context.read<AuthBloc>().add(ResetAuthStateEvent());
+                }
+              });
             }
             if (state is Authenticated) {
               // Lưu accessToken vào SharedPreferences
@@ -285,8 +333,23 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ],
                                 ),
+                                // Add a container for visual feedback during loading
                                 if (state is AuthLoading)
-                                  const CircularProgressIndicator(),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 10.0),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  )
+                                else if (state is AuthError)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                    child: Text(
+                                      'Đăng nhập thất bại. Vui lòng thử lại.',
+                                      style: TextStyle(color: Colors.red[700], fontSize: 14),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(height: 20),
                                 Container(
                                   padding: const EdgeInsets.only(top: 3, left: 3),
                                   decoration: BoxDecoration(
@@ -299,20 +362,27 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ),
                                   child: KtxButton(
-                                    onTap: (state is AuthLoading || _hasErrors)
+                                    onTap: (state is AuthLoading)
                                         ? null
                                         : () {
-                                            context.read<AuthBloc>().add(
-                                                  LoginEvent(
-                                                     email: emailController.text.trim(),
-                                                     password: passwordController.text.trim(),
-                                            
-                                                  ),
-                                                );
+                                            setState(() {
+                                              _emailTouched = true;
+                                              _passwordTouched = true;
+                                            });
+                                            _validateEmail(emailController.text);
+                                            _validatePassword(passwordController.text);
+                                            if (!_hasErrors) {
+                                              context.read<AuthBloc>().add(
+                                                LoginEvent(
+                                                  email: emailController.text.trim(),
+                                                  password: passwordController.text.trim(),
+                                                ),
+                                              );
+                                            }
                                           },
-                                    buttonColor: Colors.lightGreenAccent,
+                                    buttonColor: Colors.lightBlueAccent,
                                     nameButton: 'Đăng nhập',
-                                    textColor: Colors.black,
+                                    textColor: Colors.black87,
                                     borderSideColor: Colors.white,
                                   ),
                                 ),
@@ -347,21 +417,36 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 15,
+          style: TextStyle(
+            fontSize: ResponsiveUtils.sp(context, 15),
             fontWeight: FontWeight.w400,
             color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: ResponsiveUtils.hp(context, 0.6)),
         TextField(
           controller: controller,
           focusNode: focusNode,
+          onTap: () {
+            // Đánh dấu đã chạm vào field này
+            setState(() {
+              if (label == "Email") _emailTouched = true;
+              if (label == "Mật khẩu") _passwordTouched = true;
+            });
+          },
+          onChanged: (value) {
+            // Khi đã từng chạm vào thì validate realtime
+            if (label == "Email" && _emailTouched) _validateEmail(value);
+            if (label == "Mật khẩu" && _passwordTouched) _validatePassword(value);
+          },
           onEditingComplete: onEditingComplete,
           obscureText: obscureText,
-          style: const TextStyle(color: Colors.black),
+          style: TextStyle(color: Colors.black, fontSize: ResponsiveUtils.sp(context, 14)),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+            contentPadding: EdgeInsets.symmetric(
+              vertical: ResponsiveUtils.hp(context, 1.5),
+              horizontal: ResponsiveUtils.wp(context, 3),
+            ),
             enabledBorder: OutlineInputBorder(
               borderSide: BorderSide(
                 color: Colors.grey.shade400,
@@ -393,17 +478,24 @@ class _LoginPageState extends State<LoginPage> {
         ValueListenableBuilder<String?>(
           valueListenable: errorNotifier,
           builder: (context, error, child) {
-            if (error == null) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(top: 4.0, left: 10.0),
-              child: Text(
-                error,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
-              ),
-            );
+            if (error != null) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  top: ResponsiveUtils.hp(context, 0.8),
+                  left: ResponsiveUtils.wp(context, 1)
+                ),
+                child: Text(
+                  error,
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: ResponsiveUtils.sp(context, 12)
+                  ),
+                ),
+              );
+            }
+            return SizedBox(height: ResponsiveUtils.hp(context, 1.5));
           },
         ),
-        const SizedBox(height: 30),
       ],
     );
   }

@@ -15,25 +15,24 @@ class KtxButton extends StatelessWidget {
     this.borderSideColor = Colors.black, 
     this.onTap,
   });
-
   @override
   Widget build(BuildContext context) {
     return MaterialButton(
       minWidth: double.infinity,
       onPressed: onTap,
       height: 60,
-      color: buttonColor,
+      color: onTap == null ? Colors.grey[300] : buttonColor, // Grey when disabled
       elevation: 0,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: borderSideColor, 
+          color: onTap == null ? Colors.grey[400]! : borderSideColor, // Grey when disabled
         ),
         borderRadius: BorderRadius.circular(50),
       ),
       child: Text(
         nameButton,
         style: TextStyle(
-          color: textColor,
+          color: onTap == null ? Colors.grey[600] : textColor, // Grey when disabled
           fontWeight: FontWeight.bold,
           fontSize: 16,
         ),

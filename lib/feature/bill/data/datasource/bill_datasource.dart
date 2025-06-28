@@ -19,6 +19,11 @@ abstract class BillRemoteDataSource {
     String? billMonth,
     String? paymentStatus,
   });
+  Future<Either<Failure, List<BillDetailModel>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId, // thêm serviceId
+  });
 }
 
 class BillRemoteDataSourceImpl implements BillRemoteDataSource {
@@ -73,7 +78,7 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
           throw ApiException('Phản hồi từ server không đúng định dạng: Map không chứa key "data" hoặc "data" không phải List');
         }
       } else {
-        throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng List hoặc Map với key "data" chứa List, nhận được: ${responseData.runtimeType}');
+        throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng List hoặc Map với key "data" chứa List, nhận được: ${response.runtimeType}');
       }
       final billDetails = responseList
           .map<BillDetailModel>((json) {
@@ -127,12 +132,59 @@ class BillRemoteDataSourceImpl implements BillRemoteDataSource {
     } catch (e) {
       return Left(_handleError(e));
     }
+  }  @override  Future<Either<Failure, List<BillDetailModel>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId, // thêm serviceId
+  }) async {
+    try {
+      print('\n=== BILL DATASOURCE: GET ROOM BILL DETAILS ===');
+      print('Making API call to: /bill-details/room/$roomId');
+      print('with parameters:');
+      print('year: $year');
+      print('service_id: $serviceId');
+      
+      final queryParams = <String, String>{
+        'year': year.toString(),
+        'service_id': serviceId.toString(), // truyền service_id
+      };
+      
+      final response = await apiService.get('/bill-details/room/$roomId', queryParams: queryParams);
+      print('API response received: ${response != null ? 'success' : 'null'}');
+      
+      if (response == null) {
+        throw ApiException('Phản hồi từ server là null');
+      }
+      List<dynamic> responseList;
+      if (response is List<dynamic>) {
+        responseList = response;
+      } else if (response is Map<String, dynamic> && response['data'] is List<dynamic>) {
+        responseList = response['data'] as List<dynamic>;
+      } else {
+        throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng List hoặc Map với key "data" chứa List, nhận được: ${response.runtimeType}');
+      }
+      final validItems = responseList.where((item) => item != null).toList();
+      final billDetails = validItems
+          .map<BillDetailModel>((json) {
+        if (json is Map<String, dynamic>) {
+          return BillDetailModel.fromJson(json);
+        } else {
+          throw ApiException('Phản hồi từ server không đúng định dạng: kỳ vọng Map<String, dynamic>, nhận được: ${json.runtimeType}');
+        }
+      }).toList();
+      return Right(billDetails);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
   }
 
   Failure _handleError(dynamic error) {
     if (error is ApiException) {
       if (error.message.contains('Không tìm thấy hóa đơn nào')) {
         return ServerFailure('Không tìm thấy hóa đơn nào');
+      }
+      if (error.message.contains('Không tìm thấy phòng')) {
+        return ServerFailure('Không tìm thấy phòng. Vui lòng nhập chỉ số điện/nước trước để hệ thống ghi nhận phòng của bạn.');
       }
       if (error.message.contains('Bạn không có hợp đồng hoạt động nào')) {
         return ServerFailure('Bạn không có hợp đồng hoạt động nào');

@@ -36,12 +36,15 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       final response = await apiService.get(
         '/me/notifications',
         queryParams: queryParams,
-      );
-      print('API Response: /me/notifications -> $response');
+      );      print('API Response: /me/notifications -> $response');
       final notifications = (response['personal_notifications'] as List)
-          .map((json) => NotificationModel.fromJson(json))
+          .map((json) {
+            // Debug info
+            print('Processing notification: ID ${json['id']}, isRead: ${json['isRead']}');
+            return NotificationModel.fromJson(json);
+          })
           .toList();
-      final total = response['total'] as int? ?? 0;
+      final total = response['personal_total'] as int? ?? 0; 
       return (notifications, total);
     } catch (e) {
       print('Error in getUserNotifications: $e');

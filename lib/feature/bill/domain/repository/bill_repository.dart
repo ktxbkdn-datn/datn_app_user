@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../src/core/error/failures.dart';
-import '../../data/datasource/bill_datasource.dart';
 import '../../domain/entity/bill_entities.dart';
 
 abstract class BillRepository {
@@ -17,5 +16,10 @@ abstract class BillRepository {
     int limit = 10,
     String? billMonth,
     String? paymentStatus,
+  });  
+  Future<Either<Failure, List<BillDetail>>> getRoomBillDetails({
+    required int roomId,
+    required int year,
+    required int serviceId, // thêm serviceId
   });
 }

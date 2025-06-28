@@ -1,3 +1,4 @@
+import 'package:datn_app/common/utils/responsive_utils.dart';
 import 'package:datn_app/feature/room/presentations/pages/view_room.dart';
 import 'package:datn_app/feature/welcome_page/welcome_page.dart';
 import 'package:datn_app/src/core/di/injection.dart';
@@ -24,18 +25,25 @@ import 'feature/service/presentation/bloc/service_bloc.dart';
 import 'components/bottom_app_bar.dart';
 import 'firebase_options.dart';
 
+// Create a global RouteObserver instance to track route changes
+final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Tạo một GlobalKey duy nhất để sử dụng cho toàn bộ ứng dụng
+  final navigatorKey = GlobalKey<NavigatorState>();
+  
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    Get.snackbar('Lỗi', 'Không thể khởi tạo Firebase: $e', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 5));
+    print('Lỗi khởi tạo Firebase: $e');
+    // Không sử dụng Get.snackbar ở đây vì Get chưa được khởi tạo
   }
   print('Setting up dependency injection...');
   try {
-    await setup(GlobalKey<NavigatorState>());
+    await setup(navigatorKey);
   } catch (e) {
     print('Error setting up dependency injection: $e');
   }
@@ -45,41 +53,64 @@ void main() async {
   } catch (e) {
     print('Error initializing FCM: $e');
   }
-  runApp(const MyApp());
+  runApp(MyApp(navigatorKey: navigatorKey));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GlobalKey<NavigatorState> navigatorKey;
+  
+  const MyApp({super.key, required this.navigatorKey});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {    
     return GetMaterialApp(
+      navigatorKey: navigatorKey, // Sử dụng navigatorKey được truyền vào
       debugShowCheckedModeBanner: false,
       theme: lightMode,
       darkTheme: darkMode,
       initialRoute: '/welcome',
-      routes: {
-        '/welcome': (context) => const WelcomePage(),
-        '/login': (context) => const LoginPage(),
-        '/forgot_password': (context) => const ForgotPasswordPage(),
-        '/reset_password': (context) => const ResetPasswordPage(),
-        '/login_bottom_bar': (context) => const KBottomAppBar(),
-        '/view_room': (context) => const ViewRoom(),
+      navigatorObservers: [routeObserver],
+      getPages: [
+        GetPage(name: '/welcome', page: () => const WelcomePage()),
+        GetPage(name: '/login', page: () => const LoginPage()),
+        GetPage(name: '/forgot_password', page: () => const ForgotPasswordPage()),
+        GetPage(name: '/reset_password', page: () => const ResetPasswordPage()),
+        GetPage(name: '/login_bottom_bar', page: () => const KBottomAppBar()),
+        GetPage(name: '/view_room', page: () => const ViewRoom()),
+        // Note: RoomRegistrationPage requires parameters so it's better to use direct navigation with BlocProvider
+      ],
+      builder: (context, child) {
+        // Thêm MediaQuery để đảm bảo scale phù hợp trên tất cả các thiết bị
+        final mediaQueryData = MediaQuery.of(context);
+        final scale = mediaQueryData.textScaleFactor.clamp(0.8, 1.2);
+        
+        // We're using mediaQueryData.copyWith below
+        
+        return MediaQuery(
+          data: mediaQueryData.copyWith(
+            textScaleFactor: scale,
+            boldText: false, // Disable bold text which can trigger spell check
+          ),
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (ctx) => getIt<AuthBloc>()),
+              BlocProvider(create: (ctx) => getIt<NotificationBloc>()),
+              BlocProvider(create: (ctx) => getIt<ReportBloc>()),
+              BlocProvider(create: (ctx) => getIt<BillBloc>()),
+              BlocProvider(create: (ctx) => getIt<PaymentTransactionBloc>()),
+              BlocProvider(create: (ctx) => getIt<ServiceBloc>()),
+              BlocProvider(create: (ctx) => getIt<ContractBloc>()),
+              BlocProvider(create: (ctx) => getIt<RoomBloc>()),
+              // Create RegistrationBloc lazily to avoid the null value exception
+              BlocProvider<RegistrationBloc>(
+                create: (ctx) => getIt<RegistrationBloc>(),
+                lazy: true,
+              ),
+            ],
+            child: child!,
+          ),
+        );
       },
-      builder: (context, child) => MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (ctx) => getIt<AuthBloc>()),
-          BlocProvider(create: (ctx) => getIt<NotificationBloc>()),
-          BlocProvider(create: (ctx) => getIt<ReportBloc>()),
-          BlocProvider(create: (ctx) => getIt<BillBloc>()),
-          BlocProvider(create: (ctx) => getIt<PaymentTransactionBloc>()),
-          BlocProvider(create: (ctx) => getIt<ServiceBloc>()),
-          BlocProvider(create: (ctx) => getIt<ContractBloc>()),
-          BlocProvider(create: (ctx) => getIt<RoomBloc>()),
-          BlocProvider(create: (ctx) => getIt<RegistrationBloc>()),
-        ],
-        child: child!,
-      ),
     );
   }
 }

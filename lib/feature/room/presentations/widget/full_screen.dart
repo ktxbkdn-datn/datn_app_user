@@ -1,16 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:datn_app/common/constant/api_constant.dart';
-import 'package:datn_app/feature/room/presentations/bloc/room_bloc/room_bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:chewie/chewie.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../domain/entities/room_image_entity.dart';
 
@@ -33,7 +29,6 @@ class FullScreenMediaDialog extends StatefulWidget {
 class _FullScreenMediaDialogState extends State<FullScreenMediaDialog> {
   late PageController _pageController;
   int _currentIndex = 0;
-  bool _isLoading = false;
   List<RoomImageEntity> _images = [];
   final Map<String, ChewieController> _chewieControllers = {};
   final Map<String, VideoPlayerController> _videoControllers = {};
@@ -46,7 +41,6 @@ class _FullScreenMediaDialogState extends State<FullScreenMediaDialog> {
     _images = widget.images;
     print('FullScreenMediaDialog init: roomId=${widget.roomId}, images=${_images.length}');
     if (_images.isEmpty) {
-      _isLoading = true;
       widget.onFetchImages();
     }
   }
@@ -242,55 +236,32 @@ class _FullScreenMediaDialogState extends State<FullScreenMediaDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasImages = _images.isNotEmpty;
     return Dialog(
-      backgroundColor: Colors.black.withOpacity(0.9),
-      child: Stack(
-        children: [
-          BlocListener<RoomBloc, RoomState>(
-            listener: (context, state) {
-              print('BlocListener state: $state');
-              if (state is RoomImagesLoaded && state.roomId == widget.roomId) {
-                setState(() {
-                  _isLoading = false;
-                  _images = state.images;
-                });
-                if (_images.isEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    Get.snackbar(
-                      'Thông báo',
-                      'Chưa cập nhật ảnh hoặc video cho phòng này',
-                      snackPosition: SnackPosition.TOP,
-                      backgroundColor: Colors.blue,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
-                    Navigator.of(context).pop();
-                  });
-                }
-                print('Images loaded: ${state.images.map((i) => i.imageUrl).toList()}');
-              } else if (state is RoomError) {
-                setState(() {
-                  _isLoading = false;
-                });
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  Get.snackbar(
-                    'Lỗi',
-                    'Không thể tải media: ${state.message}',
-                    snackPosition: SnackPosition.TOP,
-                    backgroundColor: Colors.red,
-                    colorText: Colors.white,
-                    duration: const Duration(seconds: 3),
-                  );
-                  Navigator.of(context).pop();
-                });
-                print('Error: ${state.message}');
-              }
-            },
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _images.isEmpty
-                    ? const SizedBox()
-                    : PageView.builder(
+      backgroundColor: Colors.black.withOpacity(0.95),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+      child: SizedBox(
+        width: 700,
+        height: 500,
+        child: hasImages
+            ? Stack(
+                children: [
+                  // Close button
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                      onPressed: () => Navigator.of(context).pop(),
+                      splashRadius: 24,
+                      tooltip: 'Đóng',
+                    ),
+                  ),
+                  // Main image/video
+                  Center(
+                    child: SizedBox(
+                      height: 340,
+                      child: PageView.builder(
                         controller: _pageController,
                         itemCount: _images.length,
                         onPageChanged: (index) {
@@ -300,109 +271,128 @@ class _FullScreenMediaDialogState extends State<FullScreenMediaDialog> {
                         },
                         itemBuilder: (context, index) {
                           final image = _images[index];
-                          if (_isVideo(image.imageUrl)) {
-                            return FutureBuilder<ChewieController?>(
-                              future: _getChewieController(image.imageUrl),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const Center(child: CircularProgressIndicator());
-                                }
-                                if (snapshot.hasError || !snapshot.hasData) {
-                                  print('Video load error: ${snapshot.error}');
-                                  return const SizedBox();
-                                }
-                                return Chewie(controller: snapshot.data!);
-                              },
-                            );
-                          } else {
-                            final imageUrl = _buildImageUrl(image.imageUrl);
-                            print('Loading image: $imageUrl');
-                            return CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.contain,
-                              placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                              errorWidget: (context, url, error) {
-                                print('Error loading image: $error, URL: $imageUrl');
-                                String errorMessage = 'Lỗi không xác định';
-                                if (error.toString().contains('404')) {
-                                  errorMessage = 'Ảnh không tồn tại trên server';
-                                } else if (error.toString().contains('HttpException')) {
-                                  errorMessage = 'Kết nối server bị gián đoạn';
-                                }
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  Get.snackbar(
-                                    'Lỗi',
-                                    'Không thể tải ảnh: $errorMessage',
-                                    snackPosition: SnackPosition.TOP,
-                                    backgroundColor: Colors.red,
-                                    colorText: Colors.white,
-                                    duration: const Duration(seconds: 3),
-                                  );
-                                });
-                                return const SizedBox();
-                              },
-                            );
-                          }
+                          return AspectRatio(
+                            aspectRatio: 4 / 3,
+                            child: _isVideo(image.imageUrl)
+                                ? FutureBuilder<ChewieController?>(
+                                    future: _getChewieController(image.imageUrl),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return const Center(child: CircularProgressIndicator());
+                                      }
+                                      if (snapshot.hasError || !snapshot.hasData) {
+                                        return const Center(child: Text('Không thể phát video', style: TextStyle(color: Colors.white)));
+                                      }
+                                      return Chewie(controller: snapshot.data!);
+                                    },
+                                  )
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      imageUrl: _buildImageUrl(image.imageUrl),
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                                      errorWidget: (context, url, error) => const Center(child: Text('Không thể tải ảnh', style: TextStyle(color: Colors.white))),
+                                    ),
+                                  ),
+                          );
                         },
                       ),
-          ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          if (_images.length > 1 && !_isLoading) ...[
-            if (_currentIndex > 0)
-              Positioned(
-                left: 10,
-                top: MediaQuery.of(context).size.height / 2 - 30,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 30),
-                  onPressed: () {
-                    _pageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                ),
-              ),
-            if (_currentIndex < _images.length - 1)
-              Positioned(
-                right: 10,
-                top: MediaQuery.of(context).size.height / 2 - 30,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 30),
-                  onPressed: () {
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                ),
-              ),
-            Positioned(
-              bottom: _isVideo(_images[_currentIndex].imageUrl) ? 60 : 20, // Adjust for video
-              left: 0,
-              right: 0,
-              child: Center(
-                child: SmoothPageIndicator(
-                  controller: _pageController,
-                  count: _images.length,
-                  effect: const WormEffect(
-                    dotHeight: 10,
-                    dotWidth: 10,
-                    activeDotColor: Colors.blue,
-                    spacing: 8,
-                    dotColor: Colors.grey,
+                    ),
+                  ),
+                  // Navigation arrows
+                  if (_images.length > 1) ...[
+                    Positioned(
+                      left: 5,
+                      top: null,
+                      bottom: 220,
+                      child: IconButton(
+                        icon: const Icon(Icons.chevron_left, color: Colors.white, size: 36),
+                        onPressed: _currentIndex > 0
+                            ? () {
+                                _pageController.animateToPage(_currentIndex - 1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                              }
+                            : null,
+                        splashRadius: 24,
+                      ),
+                    ),
+                    Positioned(
+                      right: 5,
+                      top: null,
+                      bottom: 220,
+                      child: IconButton(
+                        icon: const Icon(Icons.chevron_right, color: Colors.white, size: 36),
+                        onPressed: _currentIndex < _images.length - 1
+                            ? () {
+                                _pageController.animateToPage(_currentIndex + 1, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                              }
+                            : null,
+                        splashRadius: 24,
+                      ),
+                    ),
+                  ],
+                  // Thumbnail strip (dots)
+                  if (_images.length > 1)
+                    Positioned(
+                      bottom: 24,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: List.generate(_images.length, (index) =>
+                              GestureDetector(
+                                onTap: () {
+                                  _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                                },
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: index == _currentIndex ? Colors.white : Colors.white.withOpacity(0.4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Image counter
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${_images.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : SizedBox(
+                height: 220,
+                child: Center(
+                  child: Text(
+                    'Chưa có ảnh hoặc video cho phòng này',
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ),
               ),
-            ),
-          ],
-        ],
       ),
     );
   }

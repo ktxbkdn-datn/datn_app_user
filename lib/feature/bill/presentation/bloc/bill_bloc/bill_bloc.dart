@@ -15,6 +15,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<GetMyBillDetailsEvent>(_onGetMyBillDetails);
     on<GetMyBillsEvent>(_onGetMyBills);
     on<ResetBillStateEvent>(_onResetBillState);
+    on<GetRoomBillDetailsEvent>(_onGetRoomBillDetails);
   }
 
   void _manageCache(int page, List<MonthlyBill> bills) {
@@ -56,8 +57,14 @@ class BillBloc extends Bloc<BillEvent, BillState> {
           return BillError(message: failure.message);
         },
         (message) {
+          // Sau khi gửi thành công, thêm debug log để theo dõi quá trình
           print('Bill submission successful: $message');
           _clearCache();
+          
+          // Thêm log để theo dõi quá trình
+          print('Refreshing bills after successful meter reading submission...');
+          
+          // Lấy bills để cập nhật roomId
           add(const GetMyBillsEvent(
             page: 1,
             limit: 10,
@@ -177,8 +184,8 @@ class BillBloc extends Bloc<BillEvent, BillState> {
             return BillError(
               message: 'Không có kết nối mạng: ${failure.message}',
             );
-          }
-          if (failure is ServerFailure && failure.message.contains('Không tìm thấy hóa đơn nào')) {
+          }          if (failure is ServerFailure && failure.message.contains('Không tìm thấy hóa đơn nào')) {
+            print('No bills found in repository - returning BillEmpty state');
             return BillEmpty(message: 'Không tìm thấy hóa đơn nào');
           }
           return BillError(message: failure.message);
@@ -217,6 +224,65 @@ class BillBloc extends Bloc<BillEvent, BillState> {
                 currentPage: event.page,
                 totalPages: totalPages,
                 totalItems: totalItems,
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }  Future<void> _onGetRoomBillDetails(
+    GetRoomBillDetailsEvent event,
+    Emitter<BillState> emit,
+  ) async {
+    emit(BillLoading());
+    print('\n=== BILL BLOC: GET ROOM BILL DETAILS ===');
+    print('Calling repository.getRoomBillDetails with:');
+    print('roomId: ${event.roomId}');
+    print('year: ${event.year}');
+    print('serviceId: ${event.serviceId}');
+    
+    final result = await billRepository.getRoomBillDetails(
+      roomId: event.roomId,
+      year: event.year,
+      serviceId: event.serviceId, // truyền serviceId
+    );
+    emit(
+      result.fold(
+        (failure) {
+          print('Get room bill details failed: ${failure.message}');
+          if (failure is NetworkFailure) {
+            return BillError(message: 'Không có kết nối mạng: ${failure.message}');
+          }
+          return BillError(message: failure.message);
+        },
+        (billDetails) {
+          print('Get room bill details successful: ${billDetails.length} details');
+          if (billDetails.isEmpty) {
+            return const BillEmpty(message: 'Không có chỉ số nào cho phòng này');
+          }
+          if (state is BillLoaded) {
+            final currentState = state as BillLoaded;
+            return currentState.copyWith(
+              billDetails: billDetails,
+              billDetailsPagination: const PaginationInfo(
+                currentPage: 1,
+                totalPages: 1,
+                totalItems: 0,
+              ),
+            );
+          } else {
+            return BillLoaded(
+              billDetails: billDetails,
+              bills: const [],
+              billDetailsPagination: const PaginationInfo(
+                currentPage: 1,
+                totalPages: 1,
+                totalItems: 0,
+              ),
+              billsPagination: const PaginationInfo(
+                currentPage: 1,
+                totalPages: 1,
+                totalItems: 0,
               ),
             );
           }
