@@ -876,15 +876,7 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                                             ),
                                                             textAlign: TextAlign.center,
                                                           ),
-                                                          const SizedBox(height: 6),
-                                                          // Container(
-                                                          //   height: 3,
-                                                          //   width: 28,
-                                                          //   decoration: BoxDecoration(
-                                                          //     color: iconColor, // Nếu muốn cùng màu icon
-                                                          //     borderRadius: BorderRadius.circular(2),
-                                                          //   ),
-                                                          // ),
+ 
                                                         ],
                                                       ),
                                                     ),
@@ -912,7 +904,8 @@ class _PaymentScreenState extends State<PaymentScreen> with WidgetsBindingObserv
                                       children: [
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [                                              const NoSpellCheckText(
+                                          children: [                                             
+                                             const NoSpellCheckText(
                                                 text: 'Hoá đơn thanh toán',
                                                 style: TextStyle(
                                                   fontSize: 18,
